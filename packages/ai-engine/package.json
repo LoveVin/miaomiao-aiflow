@@ -1,0 +1,15 @@
+{
+  "name": "@miaomiao-aiflow/ai-engine",
+  "version": "1.0.0",
+  "description": "喵喵AI应用引擎",
+  "main": "index.js",
+  "scripts": {
+    "build:watch": "tsup --watch",
+    "build": "tsup"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {}
+}
