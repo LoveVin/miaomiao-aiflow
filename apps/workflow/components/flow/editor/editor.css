@@ -1,0 +1,42 @@
+.wf-editor .react-flow__node-output {
+    width: auto;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    text-align: initial;
+    box-shadow: none;
+}
+
+.wf-editor .react-flow__handle {
+    width: 9px;
+    height: 9px;
+    background: white;
+    border: 2px solid #aa9ccb;
+}
+
+.wf-editor .react-flow__edge.selected .react-flow__edge-path {
+    stroke: #7763db !important;
+    stroke-width: 3 !important;
+}
+
+.wf-editor .react-flow__controls {
+    display: flex;
+    flex-direction: row;
+    border: 1px solid #e3e4ed;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 5px 18px #34365b0a;
+    bottom: 16px;
+    right: 16px;
+}
+
+.wf-editor .react-flow__controls-button {
+    width: 32px;
+    height: 32px;
+    border-bottom: 0;
+    border-right: 1px solid #f0f0f6;
+    padding: 9px;
+    color: #9396a9;
+    fill: currentColor;
+}

@@ -1,15 +1,25 @@
 {
-  "name": "@miaomiao-aiflow/ai-engine",
-  "version": "1.0.0",
-  "description": "喵喵AI应用引擎",
-  "main": "index.js",
-  "scripts": {
-    "build:watch": "tsup --watch",
-    "build": "tsup"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "devDependencies": {}
+    "name": "@miaomiao-aiflow/ai-engine",
+    "version": "1.0.0",
+    "description": "喵喵AI应用引擎",
+    "main": "index.js",
+    "scripts": {
+        "build:watch": "tsup --watch",
+        "build": "tsup --clean",
+        "example": "tsx src/example/run-workflow.ts"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "type": "commonjs",
+    "dependencies": {
+        "@langchain/core": "^1.2.18",
+        "@langchain/langgraph": "^1.5.1",
+        "@langchain/ollama": "^1.3.0",
+        "@qdrant/js-client-rest": "^1.19.0",
+        "zod": "^4.6.7"
+    },
+    "devDependencies": {
+        "tsx": "^4.23.15"
+    }
 }

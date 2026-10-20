@@ -1,0 +1,11 @@
+@keyframes portal-fade {
+    from {
+        opacity: 0;
+    }
+}
+
+@keyframes portal-slide-in {
+    from {
+        transform: translateX(100%);
+    }
+}

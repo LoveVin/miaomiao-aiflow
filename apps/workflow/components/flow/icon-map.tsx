@@ -1,10 +1,10 @@
-import { BookOpen, Brain, GitBranch, Globe, HomeIcon, Terminal } from 'lucide-react'
+import { Database, GitBranch, Globe, Play, Sparkles, Square } from 'lucide-react'
 
 export const ICON_MAP = {
-    start: HomeIcon,
-    llm: Brain,
+    start: Play,
+    output: Square,
+    model: Sparkles,
+    knowledge: Database,
     http: Globe,
-    end: Terminal,
     condition: GitBranch,
-    knowledge: BookOpen,
 }

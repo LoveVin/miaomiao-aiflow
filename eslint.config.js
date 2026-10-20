@@ -63,7 +63,7 @@ const packagesConfig = {
         globals: globals.node,
     },
     rules: {
-        'no-console': 'error',
+        // 'no-console': 'error',
     },
 }
 

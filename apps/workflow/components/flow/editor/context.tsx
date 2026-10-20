@@ -2,17 +2,15 @@
 
 import { createContext, useContext } from 'react'
 
-import type { NodeKind } from '../handle'
+import type { FlowNode, NodeKind } from '@/types/workflow'
 
 export interface FlowEditorContextValue {
-    onAddNode?: (type: unknown) => void
+    onAddNode?: (type: NodeKind, position?: { x: number; y: number }) => void
+    onDeleteNode?: (id: string) => void
     hasStartNode?: boolean
-    /** 所有节点信息，用于在节点卡片中渲染变量标签 */
-    nodes?: Array<{ id: string; data?: { label?: string } }>
+    nodes?: FlowNode[]
 }
-
 export const FlowEditorContext = createContext<FlowEditorContextValue>({})
-
 export function useFlowEditorContext() {
     return useContext(FlowEditorContext)
 }

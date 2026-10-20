@@ -1,61 +1,85 @@
-import { Handle, NodeProps, Position } from '@xyflow/react'
-import clsx from 'clsx'
-import { XIcon } from 'lucide-react'
+'use client'
 
+import { Handle, type NodeProps, Position } from '@xyflow/react'
+import { Trash2 } from 'lucide-react'
+import { memo } from 'react'
+
+import { useFlowEditorContext } from '@/components/flow/editor/context'
 import { ICON_MAP } from '@/components/flow/icon-map'
+import type { FlowNode, NodeKind } from '@/types/workflow'
 
-const TYPE_ICONS: Record<string, string> = {
-    string: 'Aa',
-    number: '123',
-    boolean: '0/1',
-    array: '[]',
-    object: '{}',
+const nodeIconColors: Record<NodeKind, string> = {
+    start: 'bg-[#e9f7ef] text-[#53a383]',
+    model: 'bg-[#efebff] text-[#7b61d6]',
+    knowledge: 'bg-[#eaf2fe] text-[#588ace]',
+    http: 'bg-[#eaf2fe] text-[#5186cb]',
+    condition: 'bg-[#fff4df] text-[#bd8735]',
+    output: 'bg-[#eaf1fe] text-[#5c88cf]',
 }
-
-export function StartNode({ data, selected }: NodeProps) {
-    const inputs = data?.config.inputs
-    const label = data?.label || '开始'
-
+export const WorkflowNode = memo(function WorkflowNode({ id, data, selected, type }: NodeProps<FlowNode>) {
+    const kind = type ?? 'start'
+    const Icon = ICON_MAP[kind]
+    const { onDeleteNode } = useFlowEditorContext()
+    const config = data.config
+    const descriptions = {
+        start: `输入：${config.inputs?.map(input => input.name).join('、') || '暂无参数'}`,
+        model: `模型：${config.model || '未选择模型'}`,
+        knowledge: `知识库：${config.knowledge || '待配置'}`,
+        http: `${config.method || 'GET'} ${config.url || '待配置 URL'}`,
+        condition: `${config.field || '待配置字段'} ${config.operator || '待配置运算符'} ${config.value ?? ''}`,
+        output: `返回：${config.format || 'text'} 格式内容`,
+    }
+    const stateClass = selected
+        ? 'border-[#8974e1] shadow-[0_0_0_3px_#eae5fc,0_10px_26px_#625b9819] hover:border-[#8974e1]'
+        : kind === 'model'
+          ? 'border-[#c4b7e9] shadow-[0_0_0_2px_#eeeafa,0_9px_24px_#67548f12] hover:border-[#c4b7e9]'
+          : 'border-[#dedfea] shadow-[0_8px_25px_#34365b0d] hover:border-[#b7acdf]'
     return (
-        <div
-            className={clsx('rounded-xl border bg-white shadow-md p-3 w-44', {
-                'border-blue-700': selected,
-                'border-transparent': !selected,
-            })}
-        >
-            {/* 节点图标 */}
-            <div className="flex items-center mb-3">
-                <div className="mr-3 bg-blue-700 text-white rounded-lg p-2 shadow-sm">
-                    <ICON_MAP.start size={14} />
-                </div>
-                <span className="font-bold">{label}</span>
+        <div className={`w-[228px] rounded-xl border bg-white p-[14px] transition-[border-color,box-shadow] duration-150 ${stateClass}`}>
+            <div className="flex items-center gap-[9px]">
+                <span className={`grid size-[27px] shrink-0 place-items-center rounded-[7px] ${nodeIconColors[kind]}`}>
+                    <Icon size={16} />
+                </span>
+                <strong className="flex-1 truncate text-[11px]">{data.label}</strong>
+                <button
+                    className="nodrag nopan grid size-[25px] shrink-0 place-items-center rounded-[5px] border-0 bg-transparent text-[#a5a7b7] hover:bg-[#f3f1fd] hover:text-[#6658bd]"
+                    aria-label={`删除${data.label}`}
+                    onClick={event => {
+                        event.stopPropagation()
+                        onDeleteNode?.(id)
+                    }}
+                >
+                    <Trash2 size={14} />
+                </button>
             </div>
-
-            {/* 节点入参 */}
-            {inputs && inputs.length > 0 ? (
-                <div className="space-y-2">
-                    {inputs.map((input, index) => {
-                        return (
-                            <div key={index} className="flex h-6 items-center justify-between space-x-1 rounded-md bg-[#f2f4f7] px-2">
-                                <div className="flex w-0 grow items-center space-x-1">
-                                    <XIcon size={14} color="#155aef" />
-                                    <span className="text-xs truncate" title={input.name}>
-                                        {input.name}
-                                    </span>
-                                </div>
-                                <div className="ml-1 flex items-center space-x-1">
-                                    <span className="text-[10px] text-gray-500">{TYPE_ICONS[input.type]}</span>
-                                    {input.required && <span className="text-xs text-red-500">*</span>}
-                                </div>
-                            </div>
-                        )
-                    })}
-                </div>
-            ) : (
-                <div className="text-center py-2 text-gray-400 text-xs">暂无入参</div>
+            <p className="mt-[13px] mb-0 rounded-[6px] bg-[#f7f8fb] p-[9px] text-[9px] leading-[1.7] text-[#8e91a3] [overflow-wrap:anywhere]">
+                {descriptions[kind]}
+            </p>
+            {kind === 'model' && (
+                <small className="mx-[2px] mt-[9px] block text-[8px] text-[#b1aec4]">提示词 · {config.temperature ?? 0.7} 温度</small>
             )}
-
-            <Handle type="source" position={Position.Right} />
+            {kind !== 'start' && <Handle type="target" position={Position.Left} />}
+            {kind === 'condition' ? (
+                <>
+                    <div className="mt-2 flex flex-col items-end gap-2 text-[9px] leading-4 text-[#bd8735]">
+                        <span>true（满足）</span>
+                        <span>false（不满足）</span>
+                    </div>
+                    <Handle id="true" type="source" position={Position.Right} style={{ top: 'calc(100% - 47px)' }} aria-label="true 分支" />
+                    <Handle
+                        id="false"
+                        type="source"
+                        position={Position.Right}
+                        style={{ top: 'calc(100% - 23px)' }}
+                        aria-label="false 分支"
+                    />
+                </>
+            ) : kind !== 'output' ? (
+                <Handle type="source" position={Position.Right} />
+            ) : null}
         </div>
     )
-}
+})
+export const StartNode = memo(function StartNode(props: NodeProps<FlowNode>) {
+    return <WorkflowNode {...props} type="start" />
+})
