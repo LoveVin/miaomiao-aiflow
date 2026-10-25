@@ -12,6 +12,58 @@ import type { Intent } from '@/types/workflow'
 import { EmptyList, Field, ListHeader, SelectInput, TextInput } from './controls'
 import type { NodeSettingsFormProps } from './types'
 
+function IntentCard({
+    intent,
+    index,
+    onChange,
+    onDelete,
+    availableOutputs,
+}: {
+    intent: Intent
+    index: number
+    onChange: (index: number, data: Partial<Intent>) => void
+    onDelete: (index: number) => void
+    availableOutputs: ReturnType<typeof getAvailableNodeOutputs>
+}) {
+    return (
+        <div className="rounded-lg border border-[#e8e9f2] p-3">
+            <div className="mb-3 flex items-center justify-between">
+                <span className="flex items-center gap-2 text-[10px] font-[550] text-[#63687d]">
+                    意图 {index + 1}
+                    <span className="rounded bg-[#efebff] px-[6px] py-[2px] text-[9px] font-[650] text-[#7b61d6]">分支 {index + 1}</span>
+                </span>
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    type="button"
+                    className="h-6 w-6 text-[#a2a6b9] hover:text-[#c94f5b]"
+                    onClick={() => onDelete(index)}
+                >
+                    <Trash2 size={14} />
+                </Button>
+            </div>
+            <div className="flex flex-col gap-3">
+                <Field label="意图名称">
+                    <TextInput
+                        value={intent.name}
+                        onChange={event => onChange(index, { name: event.target.value })}
+                        placeholder="例如: 查询订单、咨询价格"
+                    />
+                </Field>
+                <Field label="意图描述">
+                    <VariableEditor
+                        value={intent.description || ''}
+                        onChange={value => onChange(index, { description: value })}
+                        placeholder="描述意图特征，可使用 / 插入变量..."
+                        availableOutputs={availableOutputs}
+                        minHeight="60px"
+                    />
+                </Field>
+            </div>
+        </div>
+    )
+}
+
 export function ConditionSettingsForm({ node, onSave, flowContext }: NodeSettingsFormProps<{ model: string; intents: Intent[] }>) {
     const [model, setModel] = useState(node.data.config.model || workflowModels[0])
     const [intents, setIntents] = useState<Intent[]>(node.data.config.intents || [])
@@ -53,49 +105,16 @@ export function ConditionSettingsForm({ node, onSave, flowContext }: NodeSetting
             {intents.length ? (
                 <div className="flex flex-col gap-3">
                     {intents.map((intent, index) => (
-                        <div className="rounded-lg border border-[#e8e9f2] p-3" key={index}>
-                            <div className="mb-3 flex items-center justify-between text-[10px] font-[650] text-[#555a70]">
-                                <span>意图 {index + 1}</span>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    type="button"
-                                    onClick={() => setIntents(intents.filter((_, itemIndex) => itemIndex !== index))}
-                                >
-                                    <Trash2 size={14} />
-                                </Button>
-                            </div>
-                            <div className="flex flex-col gap-3">
-                                <Field label="意图名称">
-                                    <TextInput
-                                        value={intent.name}
-                                        onChange={event =>
-                                            setIntents(
-                                                intents.map((item, itemIndex) =>
-                                                    itemIndex === index ? { ...item, name: event.target.value } : item
-                                                )
-                                            )
-                                        }
-                                        placeholder="例如: 查询订单"
-                                    />
-                                </Field>
-                                <Field label="意图说明">
-                                    <VariableEditor
-                                        value={intent.description || ''}
-                                        onChange={value =>
-                                            setIntents(
-                                                intents.map((item, itemIndex) =>
-                                                    itemIndex === index ? { ...item, description: value } : item
-                                                )
-                                            )
-                                        }
-                                        placeholder="补充识别场景和关键词"
-                                        availableOutputs={availableOutputs}
-                                        minHeight="60px"
-                                    />
-                                </Field>
-                            </div>
-                        </div>
+                        <IntentCard
+                            key={index}
+                            intent={intent}
+                            index={index}
+                            availableOutputs={availableOutputs}
+                            onChange={(itemIndex, data) =>
+                                setIntents(intents.map((item, currentIndex) => (currentIndex === itemIndex ? { ...item, ...data } : item)))
+                            }
+                            onDelete={itemIndex => setIntents(intents.filter((_, currentIndex) => currentIndex !== itemIndex))}
+                        />
                     ))}
                 </div>
             ) : (

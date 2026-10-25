@@ -141,20 +141,18 @@ export function HttpSettingsForm({ node, onSave, flowContext }: NodeSettingsForm
 
     return (
         <div className="flex flex-col gap-5">
-            <div className="grid grid-cols-[96px_1fr] gap-2">
-                <Field label="方法">
-                    <SelectInput value={config.method} options={methodOptions} onChange={method => setConfig({ ...config, method })} />
-                </Field>
-                <Field label="请求 URL" required>
-                    <VariableEditor
-                        value={config.url}
-                        onChange={url => setConfig({ ...config, url })}
-                        placeholder="https://api.example.com/users"
-                        availableOutputs={availableOutputs}
-                        minHeight="70px"
-                    />
-                </Field>
-            </div>
+            <Field label="请求方法">
+                <SelectInput value={config.method} options={methodOptions} onChange={method => setConfig({ ...config, method })} />
+            </Field>
+            <Field label="请求 URL" required>
+                <VariableEditor
+                    value={config.url}
+                    onChange={url => setConfig({ ...config, url })}
+                    placeholder="https://api.example.com/users"
+                    availableOutputs={availableOutputs}
+                    minHeight="70px"
+                />
+            </Field>
             <Field label="超时时间 (ms)">
                 <TextInput
                     type="number"

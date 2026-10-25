@@ -75,15 +75,6 @@ export function KnowledgeSettingsForm({ node, onSave, flowContext }: NodeSetting
 
     return (
         <div className="flex flex-col gap-5">
-            <Field label="查询内容" help="可引用上游变量，例如 {{question}}">
-                <VariableEditor
-                    value={config.query}
-                    onChange={query => setConfig({ ...config, query })}
-                    availableOutputs={availableOutputs}
-                    placeholder="输入查询内容，可使用 / 插入变量"
-                    minHeight="80px"
-                />
-            </Field>
             <Field label="知识库" required>
                 {loading ? (
                     <div className="py-2 text-[11px] text-[#a2a6b9]">加载中...</div>
@@ -107,6 +98,15 @@ export function KnowledgeSettingsForm({ node, onSave, flowContext }: NodeSetting
                 ) : (
                     <EmptyList title="暂无知识库，请先创建" />
                 )}
+            </Field>
+            <Field label="查询内容" help="可引用上游变量，例如 {{question}}">
+                <VariableEditor
+                    value={config.query}
+                    onChange={query => setConfig({ ...config, query })}
+                    availableOutputs={availableOutputs}
+                    placeholder="输入查询内容，可使用 / 插入变量"
+                    minHeight="80px"
+                />
             </Field>
             <Field label="检索模式">
                 <SelectInput

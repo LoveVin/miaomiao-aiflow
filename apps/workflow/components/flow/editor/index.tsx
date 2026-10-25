@@ -421,13 +421,19 @@ function EditorInner({ appId, appName, initialNodes, initialEdges }: FlowEditorP
                                 isValidConnection={connection => {
                                     const source = nodes.find(node => node.id === connection.source)
                                     const target = nodes.find(node => node.id === connection.target)
+                                    const conditionHandlePattern = /^intent-\d+$/
+                                    const hasConditionHandle =
+                                        source?.type !== 'condition' ||
+                                        (conditionHandlePattern.test(connection.sourceHandle ?? '') &&
+                                            Number((connection.sourceHandle ?? '').split('-')[1]) <
+                                                (source.data.config.intents?.length ?? 0))
                                     return Boolean(
                                         source &&
                                         target &&
                                         source.id !== target.id &&
                                         source.type !== 'output' &&
                                         target.type !== 'start' &&
-                                        (source.type !== 'condition' || ['true', 'false'].includes(connection.sourceHandle ?? ''))
+                                        hasConditionHandle
                                     )
                                 }}
                                 proOptions={{ hideAttribution: true }}
@@ -456,6 +462,12 @@ function EditorInner({ appId, appName, initialNodes, initialEdges }: FlowEditorP
                                 setNodes(old =>
                                     old.map(node => (node.id === selected.id ? { ...node, data: { ...node.data, label, config } } : node))
                                 )
+                                if (selected.type === 'condition') {
+                                    const validHandles = new Set((config.intents ?? []).map((_, index) => `intent-${index}`))
+                                    setEdges(old =>
+                                        old.filter(edge => edge.source !== selected.id || validHandles.has(edge.sourceHandle ?? ''))
+                                    )
+                                }
                                 triggerAutoSave()
                             }}
                             onClose={() => setSelectedId(null)}

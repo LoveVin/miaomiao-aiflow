@@ -39,12 +39,7 @@ export const ConditionNode = memo(function ConditionNode({ data, selected }: Nod
                             <p className="m-0 max-w-[180px] truncate text-sm text-zinc-500" title={intent.name}>
                                 {intent.name}
                             </p>
-                            <Handle
-                                id={`intent-${index}`}
-                                position={Position.Right}
-                                style={{ top: `${100 + index * 36}px` }}
-                                type="source"
-                            />
+                            <Handle id={`intent-${index}`} position={Position.Right} style={{ right: '-12px', top: '50%' }} type="source" />
                         </div>
                     ))}
                 </div>
