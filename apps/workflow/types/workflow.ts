@@ -1,24 +1,61 @@
 import type { Edge, Node } from '@xyflow/react'
 
 export type NodeKind = 'start' | 'output' | 'model' | 'knowledge' | 'http' | 'condition'
+
+export type ParamType = 'string' | 'number' | 'boolean' | 'array' | 'object'
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'
+export type HttpBodyType = 'none' | 'form-data' | 'x-www-form-urlencoded' | 'json' | 'raw' | 'binary'
+export type KnowledgeRetrievalMode = 'vector' | 'fulltext' | 'hybrid'
+export type KnowledgeOutputFormat = 'text' | 'json'
+
 export interface FlowInput {
-    id: string
+    id?: string
     name: string
-    type: 'string' | 'number' | 'boolean'
-    required: boolean
+    type: ParamType
+    defaultValue?: string
+    required?: boolean
+    description?: string
+}
+export interface Intent {
+    name: string
+    description?: string
+}
+export interface KeyValuePair {
+    key: string
+    value: string
+}
+export interface OutputParam {
+    name: string
+    type: ParamType
+    value: string
+    description?: string
 }
 export interface NodeConfig {
     inputs?: FlowInput[]
+    intents?: Intent[]
     model?: string
     systemPrompt?: string
+    userPrompt?: string
+    assistantPrompt?: string
     prompt?: string
     temperature?: number
-    maxTokens?: string
-    knowledge?: string
-    topK?: string
-    method?: string
+    maxTokens?: number
+    method?: HttpMethod
     url?: string
+    headers?: KeyValuePair[]
+    params?: KeyValuePair[]
+    bodyType?: HttpBodyType
     body?: string
+    formData?: KeyValuePair[]
+    timeout?: number
+    followRedirects?: boolean
+    knowledgeBaseIds?: string[]
+    query?: string
+    retrievalMode?: KnowledgeRetrievalMode
+    topK?: number
+    threshold?: number
+    outputFormat?: KnowledgeOutputFormat
+    outputs?: OutputParam[]
     field?: string
     operator?: 'equals' | 'notEquals' | 'contains' | 'greaterThan' | 'lessThan'
     value?: string
@@ -63,5 +100,19 @@ export interface DemoExecution {
     success: boolean
     input: Record<string, string>
     output: string
-    steps: { id: string; label: string; detail: string }[]
+    steps: NodeTrace[]
 }
+
+export interface NodeTrace {
+    id: string
+    nodeType?: NodeKind
+    label: string
+    detail: string
+    status?: 'pending' | 'running' | 'success' | 'error'
+    duration?: number
+    inputs?: Record<string, string>
+    outputs?: Record<string, string>
+    error?: string
+}
+
+export type NodeTraceStatus = NonNullable<NodeTrace['status']>

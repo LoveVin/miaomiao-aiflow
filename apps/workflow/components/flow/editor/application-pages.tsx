@@ -100,7 +100,7 @@ function LogsPage({ executions }: { executions: DemoExecution[] }) {
     const [query, setQuery] = useState('')
     const [selected, setSelected] = useState<ApplicationLogRecord | null>(null)
     const [now] = useState(Date.now)
-    const logs = useMemo(
+    const logs = useMemo<ApplicationLogRecord[]>(
         () =>
             executions.map(record => ({
                 ...record,

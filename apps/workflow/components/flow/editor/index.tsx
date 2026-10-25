@@ -184,7 +184,10 @@ function EditorInner({ appId, appName, initialNodes, initialEdges }: FlowEditorP
         },
         [hasStartNode, screenToFlowPosition, triggerAutoSave]
     )
-    const context = useMemo(() => ({ nodes, hasStartNode, onAddNode, onDeleteNode }), [nodes, hasStartNode, onAddNode, onDeleteNode])
+    const context = useMemo(
+        () => ({ nodes, edges, hasStartNode, onAddNode, onDeleteNode }),
+        [nodes, edges, hasStartNode, onAddNode, onDeleteNode]
+    )
     const onNodesChange = useCallback(
         (changes: NodeChange<FlowNode>[]) => {
             setNodes(old => applyNodeChanges(changes, old))

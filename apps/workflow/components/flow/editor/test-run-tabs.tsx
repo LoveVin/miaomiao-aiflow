@@ -1,11 +1,12 @@
 'use client'
 
 import * as Tabs from '@radix-ui/react-tabs'
-import { CircleAlert, CircleCheck, Clock, Hash, Play, Zap } from 'lucide-react'
-import { useState } from 'react'
+import { ChevronDown, CircleAlert, CircleCheck, Clock, Copy, Hash, Play, Zap } from 'lucide-react'
+import { type ReactNode, useState } from 'react'
 
+import { getNodeColor, ICON_MAP } from '@/components/flow/icon-map'
 import { PortalButton } from '@/components/shared'
-import type { DemoExecution, FlowInput } from '@/types/workflow'
+import type { DemoExecution, FlowInput, NodeKind, NodeTraceStatus } from '@/types/workflow'
 
 const fieldControlClass =
     'w-full min-h-[65px] resize-y rounded-[7px] border border-[#e0e3ee] bg-white px-[10px] py-[9px] text-[12px] leading-[1.7] text-[#60657b] outline-none focus:border-[#a293eb] focus:shadow-[0_0_0_3px_#f2efff]'
@@ -14,7 +15,7 @@ const codeBlockClass =
     'm-0 overflow-x-auto rounded-[10px] bg-[#f7f7fc] p-3 font-[inherit] text-[12px] leading-[1.9] whitespace-pre-wrap text-[#7f8199] [overflow-wrap:anywhere]'
 
 function formatDuration(duration: number) {
-    if (duration < 1000) return `${duration} ms`
+    if (duration < 1000) return `${duration.toFixed(2)} ms`
     if (duration < 60000) return `${(duration / 1000).toFixed(2)} s`
     return `${Math.floor(duration / 60000)}m ${((duration % 60000) / 1000).toFixed(1)}s`
 }
@@ -30,8 +31,156 @@ function formatDateTime(time: string) {
     })
 }
 
-function JsonBlock({ value, emptyText }: { value: Record<string, string>; emptyText: string }) {
-    return <pre className={codeBlockClass}>{Object.keys(value).length ? JSON.stringify(value, null, 2) : emptyText}</pre>
+function CollapsibleCard({
+    open,
+    onOpenChange,
+    title,
+    meta,
+    children,
+}: {
+    open: boolean
+    onOpenChange: (open: boolean) => void
+    title: ReactNode
+    meta?: ReactNode
+    children: ReactNode
+}) {
+    return (
+        <div className="overflow-hidden rounded-[10px] border border-[#edeef5]">
+            <button
+                className="flex w-full cursor-pointer items-center justify-between gap-3 border-0 bg-white px-3 py-3 text-left transition-colors hover:bg-[#f9f8ff]"
+                type="button"
+                onClick={() => onOpenChange(!open)}
+            >
+                <span className="min-w-0 flex-1 text-[12px] font-[650] text-[#4d5164]">{title}</span>
+                <span className="flex shrink-0 items-center gap-2 text-[11px] text-[#9a9db0]">
+                    {meta}
+                    <ChevronDown size={13} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+                </span>
+            </button>
+            {open ? <div className="border-t border-solid border-[#edeef5] bg-[#fbfbfd] p-3">{children}</div> : null}
+        </div>
+    )
+}
+
+function CopyButton({ value }: { value: string }) {
+    const [copied, setCopied] = useState(false)
+
+    return (
+        <button
+            aria-label="复制内容"
+            className="absolute right-2 top-2 grid size-7 cursor-pointer place-items-center rounded-[5px] border-0 bg-white text-[#a5a7b7] opacity-0 shadow-[0_2px_8px_#3d3a5b12] transition-opacity hover:text-[#6658bd] group-hover:opacity-100"
+            type="button"
+            onClick={() => {
+                void navigator.clipboard.writeText(value)
+                setCopied(true)
+                window.setTimeout(() => setCopied(false), 1500)
+            }}
+        >
+            {copied ? <CircleCheck size={14} className="text-[#6eaf94]" /> : <Copy size={14} />}
+        </button>
+    )
+}
+
+function JsonCollapsibleCard({ title, value, emptyText }: { title: string; value: Record<string, string>; emptyText: string }) {
+    const [open, setOpen] = useState(false)
+    const formatted = Object.keys(value).length ? JSON.stringify(value, null, 2) : ''
+
+    return (
+        <CollapsibleCard open={open} onOpenChange={setOpen} title={title}>
+            {formatted ? (
+                <div className="group relative">
+                    <pre className={`${codeBlockClass} max-h-[280px] overflow-auto bg-white`}>{formatted}</pre>
+                    <CopyButton value={formatted} />
+                </div>
+            ) : (
+                <p className="m-0 text-[12px] text-[#9a9db0]">{emptyText}</p>
+            )}
+        </CollapsibleCard>
+    )
+}
+
+function OutputCollapsibleCard({ output }: { output: string }) {
+    const [open, setOpen] = useState(false)
+
+    return (
+        <CollapsibleCard open={open} onOpenChange={setOpen} title="输出结果">
+            {output ? (
+                <div className="group relative">
+                    <pre className={`${codeBlockClass} max-h-[280px] overflow-auto bg-white`}>{output}</pre>
+                    <CopyButton value={output} />
+                </div>
+            ) : (
+                <p className="m-0 text-[12px] text-[#9a9db0]">输出为空</p>
+            )}
+        </CollapsibleCard>
+    )
+}
+
+function TraceItem({ step, index, success }: { step: DemoExecution['steps'][number]; index: number; success: boolean }) {
+    const [open, setOpen] = useState(false)
+    const status: NodeTraceStatus = step.status ?? (success ? 'success' : 'error')
+    const hasDetails =
+        Boolean(step.error) ||
+        (step.inputs && Object.keys(step.inputs).length > 0) ||
+        (step.outputs && Object.keys(step.outputs).length > 0)
+    const nodeType: NodeKind = step.nodeType ?? 'start'
+    const NodeTypeIcon = ICON_MAP[nodeType]
+
+    return (
+        <li className="m-0 list-none p-0">
+            <div className="overflow-hidden rounded-[6px] bg-white shadow-[0_4px_16px_#34365b0f]">
+                <button
+                    className="flex w-full cursor-pointer items-center justify-between gap-2 border-0 bg-white px-2 py-2 text-left transition-colors hover:bg-[#f9f8ff] disabled:cursor-default disabled:hover:bg-white"
+                    disabled={!hasDetails}
+                    type="button"
+                    onClick={() => setOpen(!open)}
+                >
+                    <span className="flex min-w-0 flex-1 items-center gap-2">
+                        <span className={`grid size-5 shrink-0 place-items-center rounded-[5px] text-white ${getNodeColor(nodeType)}`}>
+                            <NodeTypeIcon size={12} />
+                        </span>
+                        <span className="truncate text-[13px] font-[550] text-[#4d5164]">{step.label}</span>
+                    </span>
+                    <span className="flex shrink-0 items-center gap-2 text-[11px] text-[#9a9db0]">
+                        {step.duration !== undefined ? <span>{formatDuration(step.duration)}</span> : null}
+                        {status === 'success' ? <CircleCheck size={12} className="text-[#6eaf94]" /> : null}
+                        {status === 'error' ? <CircleAlert size={12} className="text-[#d18282]" /> : null}
+                        {status === 'running' ? <Clock size={12} className="text-[#5b7ed8]" /> : null}
+                        {status === 'pending' ? <Clock size={12} className="text-[#a2a6b9]" /> : null}
+                        {hasDetails ? <ChevronDown size={12} className={`transition-transform ${open ? 'rotate-180' : ''}`} /> : null}
+                    </span>
+                </button>
+                {open && hasDetails ? (
+                    <div className="flex flex-col gap-2 bg-[#fbfbfd] p-2">
+                        {step.error ? (
+                            <div>
+                                <small className="text-[11px] font-[550] text-[#9a9db0]">错误</small>
+                                <pre className={`${codeBlockClass} max-h-[150px] overflow-auto bg-[#fdf2f2] text-[#c94f5b]`}>
+                                    {step.error}
+                                </pre>
+                            </div>
+                        ) : null}
+                        {step.inputs && Object.keys(step.inputs).length > 0 ? (
+                            <div>
+                                <small className="text-[11px] font-[550] text-[#9a9db0]">输入</small>
+                                <pre className={`${codeBlockClass} max-h-[150px] overflow-auto bg-white`}>
+                                    {JSON.stringify(step.inputs, null, 2)}
+                                </pre>
+                            </div>
+                        ) : null}
+                        {step.outputs && Object.keys(step.outputs).length > 0 ? (
+                            <div>
+                                <small className="text-[11px] font-[550] text-[#9a9db0]">输出</small>
+                                <pre className={`${codeBlockClass} max-h-[150px] overflow-auto bg-white`}>
+                                    {JSON.stringify(step.outputs, null, 2)}
+                                </pre>
+                            </div>
+                        ) : null}
+                    </div>
+                ) : null}
+            </div>
+        </li>
+    )
 }
 
 export function TestRunTabs({
@@ -151,7 +300,7 @@ export function TestRunTabs({
                                     {execution.success ? '执行成功' : '执行失败'}
                                 </strong>
                             </div>
-                            <pre className={codeBlockClass}>{execution.output || '输出为空'}</pre>
+                            <OutputCollapsibleCard output={execution.output} />
                         </>
                     ) : null}
                 </Tabs.Content>
@@ -181,14 +330,10 @@ export function TestRunTabs({
                                 <h3 className={sectionTitleClass}>记录 ID</h3>
                                 <p className="m-0 break-all rounded-[10px] bg-[#f7f7fc] p-3 text-[12px] text-[#7f8199]">{execution.id}</p>
                             </section>
-                            <section className="mt-5">
-                                <h3 className={sectionTitleClass}>输入数据</h3>
-                                <JsonBlock value={execution.input} emptyText="无输入数据" />
-                            </section>
-                            <section className="mt-5">
-                                <h3 className={sectionTitleClass}>输出数据</h3>
-                                <pre className={codeBlockClass}>{execution.output || '输出为空'}</pre>
-                            </section>
+                            <div className="mt-5 flex flex-col gap-3">
+                                <JsonCollapsibleCard title="输入参数" value={execution.input} emptyText="无输入数据" />
+                                <OutputCollapsibleCard output={execution.output} />
+                            </div>
                         </>
                     ) : null}
                 </Tabs.Content>
@@ -207,18 +352,9 @@ export function TestRunTabs({
                                         </span>
                                     )}
                                 </div>
-                                <ol className="m-0 flex list-none flex-col gap-3 p-0">
+                                <ol className="m-0 flex list-none flex-col gap-1.5 p-0">
                                     {execution.steps.map((step, index) => (
-                                        <li className="rounded-[10px] border border-[#edeef5] p-3" key={`${step.id}-${index}`}>
-                                            <div className="flex items-center gap-2">
-                                                <span className="grid size-5 shrink-0 place-items-center rounded-full bg-[#efebff] text-[11px] font-[650] text-[#7664e9]">
-                                                    {index + 1}
-                                                </span>
-                                                <strong className="text-[12px] font-[650] text-[#4d5164]">{step.label}</strong>
-                                                {execution.success && <CircleCheck size={13} className="ml-auto text-[#6eaf94]" />}
-                                            </div>
-                                            <p className="mt-2 mb-0 pl-7 text-[12px] leading-[1.8] text-[#9a9db0]">{step.detail}</p>
-                                        </li>
+                                        <TraceItem key={`${step.id}-${index}`} index={index} step={step} success={execution.success} />
                                     ))}
                                 </ol>
                             </>

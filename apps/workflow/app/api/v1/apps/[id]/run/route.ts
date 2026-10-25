@@ -30,7 +30,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
                     outputs: { output: result.outputs },
                     error: result.error,
                     duration: result.duration,
-                    nodeTraces: result.nodeTraces,
+                    nodeTraces: JSON.parse(JSON.stringify(result.nodeTraces)),
                     startedAt: new Date(Date.now() - result.duration),
                     completedAt: new Date(),
                 },

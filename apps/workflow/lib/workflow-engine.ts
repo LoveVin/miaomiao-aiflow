@@ -2,8 +2,13 @@ import type { DemoExecution, FlowEdge, FlowNode } from '@/types/workflow'
 
 const supportedKinds = ['start', 'output', 'model', 'knowledge', 'http', 'condition'] as const
 
-const interpolate = (text: string, values: Record<string, string>) =>
-    text.replace(/\{\{\s*([\w]+)\s*\}\}/g, (match, key: string) => values[key] ?? match)
+const interpolate = (text: string, values: Record<string, string>, nodeOutputs: Map<string, Record<string, string>>) => {
+    const withNodeOutputs = text.replace(/\$\{([^.}]+)\.([^}]+)\}/g, (match, nodeId: string, variableName: string) => {
+        const value = nodeOutputs.get(nodeId)?.[variableName]
+        return value === undefined ? match : value
+    })
+    return withNodeOutputs.replace(/\{\{\s*([\w]+)\s*\}\}/g, (match, key: string) => values[key] ?? match)
+}
 
 function simulateWorkflow(nodes: FlowNode[], edges: FlowEdge[], input: Record<string, string>): Pick<DemoExecution, 'output' | 'steps'> {
     const start = nodes.filter(node => node.type === 'start')
@@ -24,8 +29,12 @@ function simulateWorkflow(nodes: FlowNode[], edges: FlowEdge[], input: Record<st
         const source = nodes.find(node => node.id === edge.source)
         const target = nodes.find(node => node.id === edge.target)
         if (!source || !target || source.type === 'output' || target.type === 'start') throw new Error('存在无效连线，请检查节点连接。')
-        if (source.type === 'condition' && !['true', 'false'].includes(edge.sourceHandle ?? ''))
-            throw new Error('条件分支连线必须使用 true 或 false 连接点。')
+        if (source.type === 'condition') {
+            const conditionHandles = source.data.config.intents?.length
+                ? source.data.config.intents.map((_, index) => `intent-${index}`)
+                : ['true', 'false']
+            if (!conditionHandles.includes(edge.sourceHandle ?? '')) throw new Error('条件分支连线使用了无效的连接点。')
+        }
     }
     const reachable = new Set([start[0]!.id])
     const queue = [start[0]!.id]
@@ -61,6 +70,7 @@ function simulateWorkflow(nodes: FlowNode[], edges: FlowEdge[], input: Record<st
     if (ordered.length !== nodes.length) throw new Error('工作流中存在循环连线，无法模拟。')
     if (!ordered.some(node => node.type === 'output')) throw new Error('请添加并连接结束节点。')
     const values: Record<string, string> = { ...input, content: '' }
+    const nodeOutputs = new Map<string, Record<string, string>>()
     const active = new Set([start[0]!.id])
     const steps: DemoExecution['steps'] = []
     let output = ''
@@ -68,54 +78,99 @@ function simulateWorkflow(nodes: FlowNode[], edges: FlowEdge[], input: Record<st
     for (const node of ordered) {
         if (!active.has(node.id)) continue
         const config = node.data.config
+        const nodeStartedAt = performance.now()
+        const stepInput = { ...values }
         let detail = '已读取输入参数'
         let branch: string | undefined
+        let stepOutputs: Record<string, string> = values.content ? { content: values.content } : {}
         if (node.type === 'model') {
-            values.content = `[本地模拟 · 非 AI 生成]\n${interpolate(config.prompt ?? '', values)}`
+            const prompt = config.userPrompt || config.prompt || ''
+            values.content = `[本地模拟 · 非 AI 生成]\n${interpolate(prompt, values, nodeOutputs)}`
             detail = `已替换提示词变量；未调用 ${config.model ?? '模型'}`
+            stepOutputs = { content: values.content }
         }
-        if (node.type === 'knowledge') detail = '跳过真实知识检索；未生成召回内容'
+        if (node.type === 'knowledge') {
+            values.content = '[本地模拟 · 知识召回内容]'
+            detail = `已准备 ${config.retrievalMode ?? 'vector'} 检索请求；未执行真实知识检索`
+            stepOutputs = { content: values.content }
+        }
         if (node.type === 'http') {
-            detail = `仅演示 ${config.method ?? 'GET'} ${interpolate(config.url ?? '', values)}；请求体：${interpolate(config.body ?? '', values) || '无'}；未发出真实请求`
+            detail = `仅演示 ${config.method ?? 'GET'} ${interpolate(config.url ?? '', values, nodeOutputs)}；请求体：${
+                interpolate(config.body ?? '', values, nodeOutputs) || '无'
+            }；未发出真实请求`
+            stepOutputs = { message: '[本地模拟 · 未发出请求]' }
         }
         if (node.type === 'condition') {
-            const field = config.field?.trim() ?? ''
-            if (!field || !Object.hasOwn(values, field)) throw new Error(`条件分支比较字段不存在：${field || '未配置'}`)
-            const left = values[field]!
-            const right = interpolate(config.value ?? '', values)
-            let result: boolean
-            switch (config.operator) {
-                case 'equals':
-                    result = left === right
-                    break
-                case 'notEquals':
-                    result = left !== right
-                    break
-                case 'contains':
-                    result = left.includes(right)
-                    break
-                case 'greaterThan':
-                case 'lessThan': {
-                    if (!left.trim() || !right.trim() || !Number.isFinite(Number(left)) || !Number.isFinite(Number(right)))
-                        throw new Error('条件分支的大小比较需要两个有效数字。')
-                    result = config.operator === 'greaterThan' ? Number(left) > Number(right) : Number(left) < Number(right)
-                    break
+            if (config.intents?.length) {
+                const matchedIndex = config.intents.findIndex(intent => intent.name && JSON.stringify(values).includes(intent.name))
+                if (matchedIndex >= 0) {
+                    branch = `intent-${matchedIndex}`
+                    detail = `识别意图：${config.intents[matchedIndex]!.name}；仅执行对应分支`
+                } else {
+                    detail = '未识别到意图；本地模拟不激活后续分支'
                 }
-                default:
-                    throw new Error('请选择条件分支比较运算符。')
+                stepOutputs = { result: detail }
+            } else {
+                const field = config.field?.trim() ?? ''
+                if (!field || !Object.hasOwn(values, field)) throw new Error(`条件分支比较字段不存在：${field || '未配置'}`)
+                const left = values[field]!
+                const right = interpolate(config.value ?? '', values, nodeOutputs)
+                let result: boolean
+                switch (config.operator) {
+                    case 'equals':
+                        result = left === right
+                        break
+                    case 'notEquals':
+                        result = left !== right
+                        break
+                    case 'contains':
+                        result = left.includes(right)
+                        break
+                    case 'greaterThan':
+                    case 'lessThan': {
+                        if (!left.trim() || !right.trim() || !Number.isFinite(Number(left)) || !Number.isFinite(Number(right)))
+                            throw new Error('条件分支的大小比较需要两个有效数字。')
+                        result = config.operator === 'greaterThan' ? Number(left) > Number(right) : Number(left) < Number(right)
+                        break
+                    }
+                    default:
+                        throw new Error('请选择条件分支比较运算符。')
+                }
+                branch = String(result)
+                detail = `比较 ${field}，结果为 ${branch}；仅执行 ${branch} 分支`
+                stepOutputs = { result: detail }
             }
-            branch = String(result)
-            detail = `比较 ${field}，结果为 ${branch}；仅执行 ${branch} 分支`
             if (!edges.some(edge => edge.source === node.id && edge.sourceHandle === branch))
-                throw new Error(`条件分支 ${branch} 尚未连接。`)
+                throw new Error(`条件分支 ${branch ?? '输出'} 尚未连接。`)
         }
         if (node.type === 'output') {
-            const result = interpolate(config.template ?? '{{content}}', values)
-            output = config.format === 'json' ? JSON.stringify({ content: result }, null, 2) : result
-            detail = '已在本地渲染结束节点模板'
+            if (config.outputs?.length) {
+                const renderedOutputs = Object.fromEntries(
+                    config.outputs.map(item => [item.name, interpolate(item.value, values, nodeOutputs)])
+                )
+                output =
+                    config.outputFormat === 'json' ? JSON.stringify(renderedOutputs, null, 2) : JSON.stringify(renderedOutputs, null, 2)
+                detail = '已在本地渲染结束节点输出参数'
+                stepOutputs = renderedOutputs
+            } else {
+                const result = interpolate(config.template ?? '{{content}}', values, nodeOutputs)
+                output = config.format === 'json' ? JSON.stringify({ content: result }, null, 2) : result
+                detail = '已在本地渲染结束节点模板'
+                stepOutputs = { content: result }
+            }
             ended = true
         }
-        steps.push({ id: node.id, label: node.data.label, detail })
+        steps.push({
+            id: node.id,
+            label: node.data.label,
+            detail,
+            status: 'success',
+            duration: performance.now() - nodeStartedAt,
+            nodeType: node.type,
+            inputs: stepInput,
+            outputs: stepOutputs,
+        })
+        nodeOutputs.set(node.id, stepOutputs)
         for (const edge of edges) {
             if (edge.source === node.id && (branch === undefined || edge.sourceHandle === branch)) active.add(edge.target)
         }
@@ -125,12 +180,12 @@ function simulateWorkflow(nodes: FlowNode[], edges: FlowEdge[], input: Record<st
 }
 
 export function runWorkflow(nodes: FlowNode[], edges: FlowEdge[], input: Record<string, string>) {
-    const startedAt = Date.now()
+    const startedAt = performance.now()
     try {
         const result = simulateWorkflow(nodes, edges, input)
         return {
             status: 'SUCCESS' as const,
-            duration: Date.now() - startedAt,
+            duration: performance.now() - startedAt,
             outputs: result.output,
             nodeTraces: result.steps,
             error: null,
@@ -138,7 +193,7 @@ export function runWorkflow(nodes: FlowNode[], edges: FlowEdge[], input: Record<
     } catch (error) {
         return {
             status: 'ERROR' as const,
-            duration: Date.now() - startedAt,
+            duration: performance.now() - startedAt,
             outputs: error instanceof Error ? error.message : '工作流执行失败',
             nodeTraces: [],
             error: error instanceof Error ? error.message : '工作流执行失败',
