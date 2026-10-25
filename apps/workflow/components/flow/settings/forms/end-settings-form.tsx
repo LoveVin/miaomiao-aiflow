@@ -8,12 +8,8 @@ import { VariableEditor } from '@/components/flow/settings/variable-editor'
 import { Button } from '@/components/ui/button'
 import type { OutputParam } from '@/types/workflow'
 
-import { EmptyList, Field, ListHeader, SelectInput, TextInput } from './controls'
+import { EmptyList, Field, ListHeader, TextInput } from './controls'
 import type { NodeSettingsFormProps } from './types'
-
-const typeOptions = ['string', 'number', 'boolean', 'array', 'object'].map(value => ({ value, label: value }))
-
-const isVariableReference = (value: string) => /^\$\{[^}]+\}$/.test(value.trim())
 
 export function EndSettingsForm({ node, onSave, flowContext }: NodeSettingsFormProps<{ outputs: OutputParam[] }>) {
     const [outputs, setOutputs] = useState<OutputParam[]>(node.data.config.outputs || [])
@@ -39,11 +35,7 @@ export function EndSettingsForm({ node, onSave, flowContext }: NodeSettingsFormP
             <ListHeader
                 title="输出参数"
                 action={
-                    <Button
-                        variant="outline"
-                        type="button"
-                        onClick={() => setOutputs([...outputs, { name: '', type: 'string', value: '' }])}
-                    >
+                    <Button variant="outline" type="button" onClick={() => setOutputs([...outputs, { name: '', value: '' }])}>
                         <Plus size={13} />
                         添加
                     </Button>
@@ -64,7 +56,7 @@ export function EndSettingsForm({ node, onSave, flowContext }: NodeSettingsFormP
                                     <Trash2 size={14} />
                                 </Button>
                             </div>
-                            <div className={`grid gap-2 ${isVariableReference(output.value) ? 'grid-cols-1' : 'grid-cols-[1fr_96px]'}`}>
+                            <div className="grid grid-cols-1 gap-2">
                                 <Field label="参数名">
                                     <TextInput
                                         value={output.name}
@@ -78,21 +70,6 @@ export function EndSettingsForm({ node, onSave, flowContext }: NodeSettingsFormP
                                         placeholder="result"
                                     />
                                 </Field>
-                                {!isVariableReference(output.value) && (
-                                    <Field label="类型">
-                                        <SelectInput
-                                            value={output.type}
-                                            options={typeOptions}
-                                            onChange={type =>
-                                                setOutputs(
-                                                    outputs.map((item, itemIndex) =>
-                                                        itemIndex === index ? { ...item, type: type as OutputParam['type'] } : item
-                                                    )
-                                                )
-                                            }
-                                        />
-                                    </Field>
-                                )}
                             </div>
                             <Field label="参数值" className="mt-3">
                                 <VariableEditor

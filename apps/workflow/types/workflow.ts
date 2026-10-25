@@ -26,7 +26,6 @@ export interface KeyValuePair {
 }
 export interface OutputParam {
     name: string
-    type: ParamType
     value: string
     description?: string
 }
