@@ -13,6 +13,8 @@ import type { NodeSettingsFormProps } from './types'
 
 const typeOptions = ['string', 'number', 'boolean', 'array', 'object'].map(value => ({ value, label: value }))
 
+const isVariableReference = (value: string) => /^\$\{[^}]+\}$/.test(value.trim())
+
 export function EndSettingsForm({ node, onSave, flowContext }: NodeSettingsFormProps<{ outputs: OutputParam[] }>) {
     const [outputs, setOutputs] = useState<OutputParam[]>(node.data.config.outputs || [])
     const lastSavedRef = useRef(JSON.stringify({ outputs: node.data.config.outputs || [] }))
@@ -62,7 +64,7 @@ export function EndSettingsForm({ node, onSave, flowContext }: NodeSettingsFormP
                                     <Trash2 size={14} />
                                 </Button>
                             </div>
-                            <div className="grid grid-cols-[1fr_96px] gap-2">
+                            <div className={`grid gap-2 ${isVariableReference(output.value) ? 'grid-cols-1' : 'grid-cols-[1fr_96px]'}`}>
                                 <Field label="参数名">
                                     <TextInput
                                         value={output.name}
@@ -76,19 +78,21 @@ export function EndSettingsForm({ node, onSave, flowContext }: NodeSettingsFormP
                                         placeholder="result"
                                     />
                                 </Field>
-                                <Field label="类型">
-                                    <SelectInput
-                                        value={output.type}
-                                        options={typeOptions}
-                                        onChange={type =>
-                                            setOutputs(
-                                                outputs.map((item, itemIndex) =>
-                                                    itemIndex === index ? { ...item, type: type as OutputParam['type'] } : item
+                                {!isVariableReference(output.value) && (
+                                    <Field label="类型">
+                                        <SelectInput
+                                            value={output.type}
+                                            options={typeOptions}
+                                            onChange={type =>
+                                                setOutputs(
+                                                    outputs.map((item, itemIndex) =>
+                                                        itemIndex === index ? { ...item, type: type as OutputParam['type'] } : item
+                                                    )
                                                 )
-                                            )
-                                        }
-                                    />
-                                </Field>
+                                            }
+                                        />
+                                    </Field>
+                                )}
                             </div>
                             <Field label="参数值" className="mt-3">
                                 <VariableEditor
