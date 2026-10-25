@@ -59,8 +59,12 @@ function getNextNodeId(kind: NodeKind, nodes: FlowNode[]) {
 
 function normalizeWorkflowIds(nodes: FlowNode[], edges: FlowEdge[]) {
     const nodeIdMap = new Map<string, string>()
+    const nextSequences = new Map<NodeKind, number>()
     const normalizedNodes = nodes.map(node => {
-        const nextId = getNextNodeId(node.type as NodeKind, normalizedNodes)
+        const kind = node.type as NodeKind
+        const nextSequence = (nextSequences.get(kind) || 0) + 1
+        nextSequences.set(kind, nextSequence)
+        const nextId = `${kind}-${nextSequence}`
         if (nextId !== node.id) nodeIdMap.set(node.id, nextId)
         return nextId === node.id ? node : { ...node, id: nextId }
     })
