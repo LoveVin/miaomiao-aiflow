@@ -4,20 +4,13 @@ import { Edit2, Plus, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { type Control, Controller, useForm, type UseFormRegister, useWatch } from 'react-hook-form'
 
+import { PARAM_TYPE_LABELS, PARAM_TYPE_OPTIONS } from '@/components/flow/param-types'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import type { FlowInput, ParamType } from '@/types/workflow'
 
 import { CheckboxInput, EmptyList, Field, ListHeader, SelectInput, TextInput } from './controls'
 import type { NodeSettingsFormProps } from './types'
-
-const typeOptions: { value: ParamType; label: string }[] = [
-    { value: 'string', label: '字符串' },
-    { value: 'number', label: '数字' },
-    { value: 'boolean', label: '布尔值' },
-    { value: 'array', label: '数组' },
-    { value: 'object', label: '对象' },
-]
 
 const placeholders: Record<ParamType, string> = {
     string: '例如: Hello',
@@ -84,7 +77,12 @@ function ParamEditDialog({
                             control={control}
                             name="type"
                             render={({ field }) => (
-                                <SelectInput id="type" value={field.value || 'string'} options={typeOptions} onChange={field.onChange} />
+                                <SelectInput
+                                    id="type"
+                                    value={field.value || 'string'}
+                                    options={PARAM_TYPE_OPTIONS}
+                                    onChange={field.onChange}
+                                />
                             )}
                         />
                     </Field>
@@ -155,7 +153,7 @@ export function StartSettingsForm({ node, onSave }: NodeSettingsFormProps<{ inpu
                         >
                             <span className="flex min-w-0 flex-1 items-center gap-2 text-[11px] text-[#555a70]">
                                 <strong className="truncate font-[650]">{input.name}</strong>
-                                <small className="rounded bg-[#f2f3f8] px-1.5 py-0.5 text-[9px]">{input.type}</small>
+                                <small className="rounded bg-[#f2f3f8] px-1.5 py-0.5 text-[9px]">{PARAM_TYPE_LABELS[input.type]}</small>
                                 {input.required ? (
                                     <small className="rounded bg-[#fdecec] px-1.5 py-0.5 text-[9px] text-[#c94f5b]">必填</small>
                                 ) : null}

@@ -6,15 +6,8 @@ import clsx from 'clsx'
 import { memo } from 'react'
 
 import { ICON_MAP } from '@/components/flow/icon-map'
+import { PARAM_TYPE_LABELS } from '@/components/flow/param-types'
 import type { FlowNode } from '@/types/workflow'
-
-const typeIcons: Record<string, string> = {
-    string: 'Aa',
-    number: '123',
-    boolean: '0/1',
-    array: '[]',
-    object: '{}',
-}
 
 export const StartNode = memo(function StartNode({ data, selected }: NodeProps<FlowNode>) {
     const inputs = data.config.inputs || []
@@ -46,7 +39,7 @@ export const StartNode = memo(function StartNode({ data, selected }: NodeProps<F
                                 </span>
                             </span>
                             <span className="ml-1 flex items-center gap-1">
-                                <span className="text-[10px] text-gray-500">{typeIcons[input.type]}</span>
+                                <span className="whitespace-nowrap text-[10px] text-gray-500">{PARAM_TYPE_LABELS[input.type]}</span>
                                 {input.required ? <span className="text-xs text-red-500">*</span> : null}
                             </span>
                         </div>

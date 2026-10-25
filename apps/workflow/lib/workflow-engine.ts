@@ -79,10 +79,14 @@ function simulateWorkflow(nodes: FlowNode[], edges: FlowEdge[], input: Record<st
         if (!active.has(node.id)) continue
         const config = node.data.config
         const nodeStartedAt = performance.now()
-        const stepInput = { ...values }
+        const stepInput =
+            node.type === 'start' ? Object.fromEntries(inputs.map(item => [item.name, values[item.name] ?? ''])) : { ...values }
         let detail = '已读取输入参数'
         let branch: string | undefined
         let stepOutputs: Record<string, string> = values.content ? { content: values.content } : {}
+        if (node.type === 'start') {
+            stepOutputs = Object.fromEntries(inputs.map(item => [item.name, values[item.name] ?? '']))
+        }
         if (node.type === 'model') {
             const prompt = config.userPrompt || config.prompt || ''
             values.content = `[本地模拟 · 非 AI 生成]\n${interpolate(prompt, values, nodeOutputs)}`
