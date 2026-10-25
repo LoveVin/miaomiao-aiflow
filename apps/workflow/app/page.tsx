@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 
 import {
+    CardSkeleton,
     colorClasses,
     emptyStateClass,
     fieldLabelClass,
@@ -53,6 +54,7 @@ export default function StudioPage() {
     const loadApps = useCallback(async () => {
         setLoading(true)
         setError('')
+        setApps([])
         try {
             const result = await appService.getList({ search })
             setApps(result.items)
@@ -109,7 +111,7 @@ export default function StudioPage() {
                 </PortalButton>
             </Hero>
             <section>
-                {(loading || error) && <p className="mb-4 text-[10px] text-[#85899a]">{loading ? '加载中…' : error}</p>}
+                {error && !loading && <p className="mb-4 text-[10px] text-[#85899a]">{error}</p>}
                 <div className="mb-5 flex items-center justify-between gap-4 border-b border-[var(--line)] max-[760px]:flex-wrap">
                     <Tabs.Root value={tab} onValueChange={setTab}>
                         <Tabs.List className={portalTabsClass} aria-label="应用范围">
@@ -155,6 +157,7 @@ export default function StudioPage() {
                             <small className="text-[9px]">从空白流程或模板开始创建</small>
                         </button>
                     )}
+                    {loading && Array.from({ length: 7 }).map((_, index) => <CardSkeleton key={index} className="min-h-[190px]" />)}
                     {visible.map(app => (
                         <article
                             className="relative min-h-[190px] rounded-xl border border-[var(--line)] bg-white p-[18px] transition-all duration-200 hover:-translate-y-[3px] hover:border-[#dedce2] hover:shadow-[var(--shadow)]"

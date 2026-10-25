@@ -8,6 +8,13 @@
     box-shadow: none;
 }
 
+.wf-editor .react-flow__node-output.selectable.selected,
+.wf-editor .react-flow__node-output.selectable:focus,
+.wf-editor .react-flow__node-output.selectable:focus-visible,
+.wf-editor .react-flow__node-output.selectable:hover {
+    box-shadow: none;
+}
+
 .wf-editor .react-flow__handle {
     width: 9px;
     height: 9px;

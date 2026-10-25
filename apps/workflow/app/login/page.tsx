@@ -4,8 +4,9 @@ import { Database, Eye, EyeOff, Plug, Sparkles, Workflow } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { type FormEvent, useState } from 'react'
 
-import { brandLogoClass, PortalButton, PortalDialog } from '@/components/shared'
+import { brandLogoClass, PortalButton } from '@/components/shared'
 const labelClass = 'flex flex-col gap-[7px] text-[12px] font-[650] text-[#4d5063]'
+const fieldErrorClass = 'm-0 text-[11px] font-normal text-[#d24b5b]'
 const inputClass =
     'h-[44px] w-full rounded-[9px] border border-[#dfe1ea] bg-white px-3 text-[13px] text-[var(--ink)] outline-none! transition-all duration-200 focus-visible:outline-none! focus:border-[#8e84ef] focus:shadow-[0_0_0_3px_#efedff]'
 
@@ -16,11 +17,16 @@ export default function LoginPage() {
     const [name, setName] = useState('')
     const [password, setPassword] = useState('')
     const [confirmPassword, setConfirmPassword] = useState('')
-    const [notice, setNotice] = useState('')
+    const [nameError, setNameError] = useState('')
+    const [passwordError, setPasswordError] = useState('')
+    const [confirmError, setConfirmError] = useState('')
     async function enter(event?: FormEvent) {
         event?.preventDefault()
+        setNameError('')
+        setPasswordError('')
+        setConfirmError('')
         if (registering && password !== confirmPassword) {
-            setNotice('两次输入的密码不一致')
+            setConfirmError('两次输入的密码不一致')
             return
         }
         const endpoint = registering ? '/api/auth/register' : '/api/auth/login'
@@ -31,7 +37,8 @@ export default function LoginPage() {
         })
         const result = await response.json()
         if (!response.ok || !result.success) {
-            setNotice(result.message ?? '操作失败')
+            if (registering) setNameError(result.message ?? '操作失败')
+            else setPasswordError(result.message ?? '操作失败')
             return
         }
         const nextPath = new URLSearchParams(window.location.search).get('next')
@@ -100,11 +107,17 @@ export default function LoginPage() {
                             <input
                                 className={inputClass}
                                 required
+                                aria-describedby={nameError ? 'username-error' : undefined}
                                 placeholder={registering ? '请输入用户名' : '请输入登录用户名'}
                                 autoComplete="username"
                                 value={name}
                                 onChange={event => setName(event.target.value)}
                             />
+                            {nameError && (
+                                <p aria-live="polite" className={fieldErrorClass} id="username-error" role="status">
+                                    {nameError}
+                                </p>
+                            )}
                         </label>
                         <label className={labelClass}>
                             <span className="flex items-center justify-between">密码</span>
@@ -112,6 +125,7 @@ export default function LoginPage() {
                                 <input
                                     className="h-full min-w-0 flex-1 border-0 bg-transparent px-3 text-[13px] text-[var(--ink)] outline-none! focus-visible:outline-none!"
                                     required
+                                    aria-describedby={passwordError ? 'password-error' : undefined}
                                     minLength={registering ? 8 : 1}
                                     type={showPassword ? 'text' : 'password'}
                                     autoComplete={registering ? 'new-password' : 'current-password'}
@@ -128,6 +142,11 @@ export default function LoginPage() {
                                     {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
                                 </button>
                             </div>
+                            {passwordError && (
+                                <p aria-live="polite" className={fieldErrorClass} id="password-error" role="status">
+                                    {passwordError}
+                                </p>
+                            )}
                         </label>
                         {registering && (
                             <label className={labelClass}>
@@ -152,6 +171,7 @@ export default function LoginPage() {
                                         {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
                                     </button>
                                 </div>
+                                {confirmError && <p className={fieldErrorClass}>{confirmError}</p>}
                             </label>
                         )}
                         <PortalButton primary type="submit" className="mt-0.5 h-[44px] w-full text-[13px]!">
@@ -169,9 +189,6 @@ export default function LoginPage() {
                     </p>
                 </div>
             </section>
-            <PortalDialog open={!!notice} onOpenChange={() => setNotice('')} title="提示" description={notice}>
-                <PortalButton onClick={() => setNotice('')}>知道了</PortalButton>
-            </PortalDialog>
         </main>
     )
 }

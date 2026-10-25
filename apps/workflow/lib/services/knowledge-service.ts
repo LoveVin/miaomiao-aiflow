@@ -7,7 +7,7 @@ export type KnowledgeDocument = {
     slices: number
     time: string
     content: string[]
-    demo: boolean
+    status: string
 }
 
 export type RawKnowledgeDocument = {
@@ -54,7 +54,10 @@ export const knowledgeService = {
     uploadDocuments: async (id: string, files: File[]) => {
         const body = new FormData()
         files.forEach(file => body.append('files', file))
-        return apiRequest<{ imported: KnowledgeDocument[]; rejected: string[] }>(`/api/knowledge/${id}/documents`, { method: 'POST', body })
+        return apiRequest<{ imported: RawKnowledgeDocument[]; rejected: string[] }>(`/api/knowledge/${id}/documents`, {
+            method: 'POST',
+            body,
+        })
     },
     deleteDocument: async (id: string, docId: string) => {
         await apiRequest<void>(`/api/knowledge/${id}/documents/${docId}`, { method: 'DELETE' })

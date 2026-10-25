@@ -104,7 +104,6 @@ function LogsPage({ executions }: { executions: DemoExecution[] }) {
         () =>
             executions.map(record => ({
                 ...record,
-                demo: false,
                 tokens: 0,
                 user: '当前用户',
                 source: '网页应用',
@@ -117,7 +116,7 @@ function LogsPage({ executions }: { executions: DemoExecution[] }) {
         return (
             inRange &&
             (status === 'all' || (status === 'success' ? record.success : !record.success)) &&
-            `${record.id} ${record.displayTime ?? record.time} ${record.user} ${record.source} ${record.demo ? '设计稿演示' : '本地执行'} ${record.output} ${JSON.stringify(record.input)}`
+            `${record.id} ${record.displayTime ?? record.time} ${record.user} ${record.source} ${record.output} ${JSON.stringify(record.input)}`
                 .toLowerCase()
                 .includes(query.toLowerCase())
         )
@@ -154,9 +153,6 @@ function LogsPage({ executions }: { executions: DemoExecution[] }) {
                     />
                 </label>
             </div>
-            <p className={noticeClass}>
-                设计稿演示记录与真实本地执行记录合并展示；本地执行不调用模型，Tokens 消耗为 0。演示时间为设计稿文案，筛选按相对日期计算。
-            </p>
             <section className="overflow-x-auto" aria-label="运行日志">
                 <div className="min-w-[700px] border-t border-[#f0f1f4]">
                     <div className={`${runRowClass} min-h-[39px]! cursor-default bg-[#fafafe]! text-[#8c90a0]!`}>
@@ -173,9 +169,7 @@ function LogsPage({ executions }: { executions: DemoExecution[] }) {
                                 <i className="size-[5px] shrink-0 rounded-full bg-[#6d80ed]" />
                                 <span>
                                     {record.displayTime ?? new Date(record.time).toLocaleString('zh-CN')}
-                                    <small className="mt-[3px] block text-[12px] text-[#9995ae]">
-                                        {record.demo ? '设计稿演示记录' : '真实本地执行'}
-                                    </small>
+                                    <small className="mt-[3px] block text-[12px] text-[#9995ae]">执行记录</small>
                                 </span>
                             </span>
                             <span className={record.success ? successClass : `${statusClass} text-[#d35c67] [&_i]:bg-[#d35c67]`}>
@@ -183,10 +177,7 @@ function LogsPage({ executions }: { executions: DemoExecution[] }) {
                                 {record.success ? 'SUCCESS' : 'FAILED'}
                             </span>
                             <span>{(record.duration / 1000).toFixed(2)}s</span>
-                            <span>
-                                {record.tokens}
-                                {record.demo ? '（演示）' : ''}
-                            </span>
+                            <span>{record.tokens}</span>
                             <span>{record.user}</span>
                             <span className="flex w-fit items-center gap-[5px] rounded-[5px] bg-[#f0f4ff] px-[7px] py-1 whitespace-nowrap text-[#496fdd]">
                                 <KeyRound size={13} />
@@ -203,11 +194,7 @@ function LogsPage({ executions }: { executions: DemoExecution[] }) {
                     if (!open) setSelected(null)
                 }}
                 title="日志详情"
-                description={
-                    selected?.demo
-                        ? '设计稿演示记录，所有输入、输出和指标均为示例。'
-                        : '真实本地试运行记录，未调用远程模型，Tokens 消耗为 0。'
-                }
+                description="试运行执行详情。"
                 className={dialogClass}
             >
                 {selected && (
@@ -220,10 +207,7 @@ function LogsPage({ executions }: { executions: DemoExecution[] }) {
                                 {selected.success ? '成功' : '失败'} / {(selected.duration / 1000).toFixed(2)}s
                             </dd>
                             <dt>Tokens 消耗</dt>
-                            <dd>
-                                {selected.tokens}
-                                {selected.demo ? '（演示）' : '（本地执行）'}
-                            </dd>
+                            <dd>{selected.tokens}</dd>
                         </dl>
                         <h3>输入</h3>
                         <pre>{JSON.stringify(selected.input, null, 2)}</pre>
@@ -353,13 +337,13 @@ function MonitorPage({ executions }: { executions: DemoExecution[] }) {
                         <h2>Token 消耗</h2>
                         <span>
                             <b className="inline-block size-[5px] bg-[#7165e8]" /> 输入 /{' '}
-                            <b className="inline-block size-[5px] bg-[#b9b2f5]" /> 输出 · 演示
+                            <b className="inline-block size-[5px] bg-[#b9b2f5]" /> 输出
                         </span>
                     </div>
                     <div
                         className="mt-[14px] flex h-[216px] items-end justify-around gap-4 border-b border-[#e8e9ef] bg-[repeating-linear-gradient(to_bottom,transparent_0,transparent_53px,#eff0f4_54px)] px-3 pt-[18px]"
                         role="img"
-                        aria-label="输入输出 Token 消耗演示柱状图"
+                        aria-label="输入输出 Token 消耗柱状图"
                     >
                         {bars.map((bar, index) => (
                             <div className="flex h-full flex-1 items-end justify-center gap-[3px]" key={index}>
@@ -378,7 +362,7 @@ function MonitorPage({ executions }: { executions: DemoExecution[] }) {
             <section className="mt-4 rounded-xl border border-[#e8e9f0] bg-white p-[18px]">
                 <div className={chartHeadingClass}>
                     <h2>API Key 使用排行</h2>
-                    <span>{ranges.find(item => item.value === range)?.label} · 设计稿演示</span>
+                    <span>{ranges.find(item => item.value === range)?.label}</span>
                 </div>
                 <div className={`${rankRowClass} mt-[13px] min-h-[35px]! text-[#9497a6]!`}>
                     <span>名称</span>
@@ -394,7 +378,7 @@ function MonitorPage({ executions }: { executions: DemoExecution[] }) {
                         </span>
                         <span>{row.calls}</span>
                         <span>{row.tokens}</span>
-                        <span>{row.lastUsed}（演示）</span>
+                        <span>{row.lastUsed}</span>
                     </div>
                 ))}
             </section>
@@ -404,6 +388,7 @@ function MonitorPage({ executions }: { executions: DemoExecution[] }) {
 
 function ApiPage({ appId, appName }: Pick<ApplicationPagesProps, 'appId' | 'appName'>) {
     const [keys, setKeys] = useState<ApplicationDemoKey[]>([])
+    const [loadingKeys, setLoadingKeys] = useState(true)
     const [creating, setCreating] = useState(false)
     const [name, setName] = useState('')
     const [message, setMessage] = useState('')
@@ -429,6 +414,7 @@ function ApiPage({ appId, appName }: Pick<ApplicationPagesProps, 'appId' | 'appN
             } catch (error) {
                 if (!cancelled) setMessage(error instanceof Error ? error.message : '获取 API Key 失败')
             }
+            if (!cancelled) setLoadingKeys(false)
         })()
         return () => {
             cancelled = true
@@ -572,7 +558,12 @@ function ApiPage({ appId, appName }: Pick<ApplicationPagesProps, 'appId' | 'appN
                                 </Menu.Root>
                             </div>
                         ))}
-                        {!keys.length && <div className={emptyClass}>暂无 API Key，点击“创建 API Key”添加。</div>}
+                        {loadingKeys && (
+                            <div aria-live="polite" className={emptyClass} role="status">
+                                加载中…
+                            </div>
+                        )}
+                        {!loadingKeys && !keys.length && <div className={emptyClass}>暂无 API Key，点击“创建 API Key”添加。</div>}
                     </div>
                 </div>
             </section>

@@ -1,7 +1,6 @@
 import type { DemoExecution } from './workflow'
 
 export type ApplicationLogRecord = DemoExecution & {
-    demo: boolean
     tokens: number
     user: string
     source: string

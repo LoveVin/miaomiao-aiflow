@@ -10,7 +10,6 @@ import type { FlowNode } from '@/types/workflow'
 
 export const ModelNode = memo(function ModelNode({ data, selected }: NodeProps<FlowNode>) {
     const model = data.config.model || '未选择模型'
-    const prompt = data.config.userPrompt || data.config.prompt || ''
 
     return (
         <div
@@ -30,11 +29,6 @@ export const ModelNode = memo(function ModelNode({ data, selected }: NodeProps<F
                     <span className="w-12 text-xs text-gray-600">模型</span>
                     <span className="flex-1 rounded-md bg-[#f2f4f7] px-2 py-1 text-sm">{model}</span>
                 </div>
-                {prompt ? (
-                    <p className="m-0 max-h-16 overflow-hidden rounded-md bg-[#f2f4f7] px-2 py-1 text-xs leading-[1.6] text-zinc-500">
-                        {prompt}
-                    </p>
-                ) : null}
             </div>
             <Handle position={Position.Left} type="target" />
             <Handle position={Position.Right} type="source" />

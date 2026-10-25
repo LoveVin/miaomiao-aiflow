@@ -62,7 +62,7 @@ export const FlowEditorHeader = memo(function FlowEditorHeader({
                             ? '草稿 · 有未保存的更改'
                             : lastSavedAt
                               ? `已保存 · ${new Date(lastSavedAt).toLocaleTimeString('zh-CN')}`
-                              : '草稿 · 本地演示工作流'}
+                              : '草稿'}
                     </small>
                 </div>
             </div>

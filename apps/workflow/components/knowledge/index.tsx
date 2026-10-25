@@ -6,8 +6,8 @@ import { useRouter } from 'next/navigation'
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 
 import {
+    CardSkeleton,
     colorClasses,
-    demoNoteClass,
     emptyStateClass,
     fieldLabelClass,
     Hero,
@@ -21,7 +21,13 @@ import {
 import { IconPicker, knowledgeIconOptions, RecordIcon } from '@/components/shared/icon-picker'
 import { cn } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
-import { type KnowledgeDocument, type KnowledgeLibrary, knowledgeService, type RawKnowledgeBase } from '@/lib/services/knowledge-service'
+import {
+    type KnowledgeDocument,
+    type KnowledgeLibrary,
+    knowledgeService,
+    type RawKnowledgeBase,
+    type RawKnowledgeDocument,
+} from '@/lib/services/knowledge-service'
 
 const readyClass =
     'ready flex items-center gap-1.5 text-[#4c9f78] [&_i]:size-[5px] [&_i]:rounded-full [&_i]:bg-[#49b788] [&_i]:shadow-[0_0_0_3px_#e8f7f1]'
@@ -35,29 +41,32 @@ const fileTypeClass =
     'grid h-[37px] w-[31px] shrink-0 place-items-center rounded-[5px] bg-[#eceaff] text-[7px] font-extrabold not-italic text-[#6255dd]'
 const navLinkClass = 'flex h-[38px] items-center gap-[9px] rounded-lg px-2.5 text-[10px] no-underline hover:bg-[#f1f0f8]'
 
+function toUiDocument(document: RawKnowledgeDocument): KnowledgeDocument {
+    return {
+        id: document.id,
+        name: document.name,
+        size:
+            document.size > 1048576 ? `${(document.size / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(document.size / 1024))} KB`,
+        slices: document.chunkCount ?? 0,
+        time: new Date(document.updatedAt).toLocaleString('zh-CN'),
+        content: document.content?.match(/[\s\S]{1,500}/g) ?? [],
+        status: document.status,
+    }
+}
+
 function toUiLibrary(item: RawKnowledgeBase): KnowledgeLibrary {
+    const documents = item.documents.map(toUiDocument)
     return {
         id: item.id,
         name: item.name,
         desc: item.description ?? '',
-        docs: item.documents.length,
-        slices: item.documents.reduce((total, document) => total + document.chunkCount, 0),
+        docs: documents.length,
+        slices: documents.reduce((total, document) => total + document.slices, 0),
         time: new Date(item.updatedAt).toLocaleString('zh-CN'),
         color: item.iconColor,
         icon: item.icon,
         mode: item.retrievalMode.toLowerCase(),
-        documents: item.documents.map(document => ({
-            id: document.id,
-            name: document.name,
-            size:
-                document.size > 1048576
-                    ? `${(document.size / 1048576).toFixed(1)} MB`
-                    : `${Math.max(1, Math.round(document.size / 1024))} KB`,
-            slices: document.chunkCount,
-            time: new Date(document.updatedAt).toLocaleString('zh-CN'),
-            content: document.content?.match(/[\s\S]{1,500}/g) ?? [],
-            demo: false,
-        })),
+        documents,
     }
 }
 
@@ -65,6 +74,7 @@ export function KnowledgeList() {
     const router = useRouter()
     const [libraries, setLibraries] = useState<KnowledgeLibrary[]>([])
     const [search, setSearch] = useState('')
+    const [loaded, setLoaded] = useState(false)
     const [modal, setModal] = useState(false)
     const [name, setName] = useState('')
     const [desc, setDesc] = useState('')
@@ -76,6 +86,7 @@ export function KnowledgeList() {
             .getList()
             .then(result => setLibraries(result.items.map(toUiLibrary)))
             .catch(error => setError(error instanceof Error ? error.message : '加载知识库失败'))
+            .finally(() => setLoaded(true))
     }, [])
 
     function openCreate() {
@@ -118,6 +129,7 @@ export function KnowledgeList() {
             <div className="mb-3 flex justify-end">
                 <SearchField value={search} onChange={setSearch} placeholder="搜索知识库" />
             </div>
+            {loaded && error && <p className={emptyStateClass}>{error}</p>}
             <div className="grid grid-cols-3 gap-[15px] max-[760px]:grid-cols-2 max-[480px]:grid-cols-1">
                 <button
                     className="flex min-h-[205px] flex-col items-center justify-center rounded-xl border border-dashed border-[var(--line)] bg-white p-[18px] text-[#979aaa] hover:border-[#9187ed] hover:bg-[#faf9ff]"
@@ -129,6 +141,7 @@ export function KnowledgeList() {
                     <strong className="mb-[5px] mt-[11px] text-[11px] text-[#4a4d60]">新建知识库</strong>
                     <small className="text-[8px]">为不同业务场景独立管理知识</small>
                 </button>
+                {!loaded && Array.from({ length: 5 }).map((_, index) => <CardSkeleton key={index} className="min-h-[205px]" />)}
                 {visible.map(library => (
                     <article
                         className="relative min-h-[205px] rounded-xl border border-[var(--line)] bg-white p-[18px] transition-all duration-200 hover:-translate-y-[3px] hover:border-[#d6d2ef] hover:shadow-[var(--shadow)]"
@@ -167,7 +180,7 @@ export function KnowledgeList() {
                         </div>
                     </article>
                 ))}
-                {visible.length === 0 && <p className={emptyStateClass}>没有找到匹配的知识库</p>}
+                {loaded && visible.length === 0 && <p className={emptyStateClass}>没有找到匹配的知识库</p>}
             </div>
             <PortalDialog open={modal} onOpenChange={setModal} title="新建知识库">
                 <form onSubmit={create}>
@@ -219,6 +232,10 @@ export function KnowledgeDetail({ id, section = 'docs' }: { id: string; section?
     const router = useRouter()
     const [libraries, setLibraries] = useState<KnowledgeLibrary[]>([])
     const library = libraries.find(item => item.id === id)
+    const [loadedId, setLoadedId] = useState(id)
+    const [loadError, setLoadError] = useState('')
+    const loading = loadedId !== id
+    const activeLoadError = loadedId === id ? loadError : ''
     const [upload, setUpload] = useState(false)
     const [selectedDoc, setSelectedDoc] = useState<KnowledgeDocument | null>(null)
     const [deletingDoc, setDeletingDoc] = useState<KnowledgeDocument | null>(null)
@@ -239,19 +256,30 @@ export function KnowledgeDetail({ id, section = 'docs' }: { id: string; section?
             .then(result => {
                 if (cancelled) return
                 setLibraries(result.items.map(toUiLibrary))
+                setLoadedId(id)
             })
             .catch(error => {
-                if (!cancelled) setNotice(error instanceof Error ? error.message : '加载知识库失败')
+                if (!cancelled) {
+                    setLoadError(error instanceof Error ? error.message : '加载知识库失败')
+                    setLoadedId(id)
+                }
             })
         return () => {
             cancelled = true
         }
     }, [id])
+    if (loading)
+        return (
+            <div aria-live="polite" className={emptyStateClass} role="status">
+                加载中…
+            </div>
+        )
+    if (activeLoadError) return <div className={emptyStateClass}>{activeLoadError}</div>
     if (!library)
         return (
             <div className={emptyStateClass}>
                 <h1>未找到知识库</h1>
-                <p>该知识库可能已被删除，或不在当前浏览器的演示空间中。</p>
+                <p>该知识库可能已被删除，或当前账号无权访问。</p>
                 <Link href="/knowledge">返回全部知识库</Link>
             </div>
         )
@@ -262,20 +290,18 @@ export function KnowledgeDetail({ id, section = 'docs' }: { id: string; section?
     async function importFiles(files: FileList | File[]) {
         setUploading(true)
         try {
-            const { imported, rejected } = await knowledgeService.uploadDocuments(id, Array.from(files))
-            if (imported.length)
+            const { imported } = await knowledgeService.uploadDocuments(id, Array.from(files))
+            const importedDocuments = imported.map(toUiDocument)
+            if (imported.length) {
                 updateLibrary(item => ({
                     ...item,
-                    documents: [...item.documents, ...imported.map(document => ({ ...document, demo: false }))],
+                    documents: [...item.documents, ...importedDocuments],
                     docs: item.docs + imported.length,
-                    slices: item.slices + imported.reduce((total, doc) => total + doc.slices, 0),
+                    slices: item.slices + importedDocuments.reduce((total, doc) => total + doc.slices, 0),
                     time: '刚刚',
                 }))
-            setNotice(
-                rejected.length
-                    ? `未导入 ${rejected.join('、')}：仅支持 PDF、Word、Markdown、TXT，单个文件不超过 20MB。其余文件已添加。`
-                    : '文档已保存到数据库。TXT / Markdown 已生成固定长度切片；PDF / Word 已保存元信息，等待解析服务接入。'
-            )
+            }
+            setNotice('上传成功')
         } catch (error) {
             setNotice(error instanceof Error ? error.message : '上传文档失败')
         } finally {
@@ -298,7 +324,7 @@ export function KnowledgeDetail({ id, section = 'docs' }: { id: string; section?
                 mode: String(data.get('mode') || 'auto'),
                 time: '刚刚',
             }))
-            setNotice('知识库设置已保存到数据库。')
+            setNotice('保存成功')
         } catch (error) {
             setNotice(error instanceof Error ? error.message : '保存设置失败')
         }
@@ -357,10 +383,6 @@ export function KnowledgeDetail({ id, section = 'docs' }: { id: string; section?
                     <div className="mt-auto flex flex-col border-t border-[var(--line)] px-[9px] pb-0.5 pt-[14px] max-[480px]:hidden">
                         <small className="text-[8px] text-[#9a9dac]">知识切片</small>
                         <strong className="mb-[7px] mt-[3px] text-[19px]">{activeLibrary.slices}</strong>
-                        <span className="flex items-center gap-[5px] text-[8px] text-[#57a382]">
-                            <i className="size-[5px] rounded-full bg-[#52b185]" />
-                            本地演示空间
-                        </span>
                     </div>
                 </aside>
                 <section className="min-h-0 min-w-0 overflow-y-auto p-6 max-[760px]:p-4 max-[480px]:flex-1">
@@ -415,7 +437,7 @@ export function KnowledgeDetail({ id, section = 'docs' }: { id: string; section?
                                         <span>{doc.time}</span>
                                         <span className={readyClass}>
                                             <i />
-                                            {doc.demo ? '演示文档' : doc.content.length ? '本地切片' : '待接入解析'}
+                                            {doc.status === 'COMPLETED' ? '已解析' : '待解析'}
                                         </span>
                                         <span className="flex items-center gap-[3px] [&_button]:grid [&_button]:size-7 [&_button]:place-items-center [&_button]:rounded-[7px] [&_button]:border-0 [&_button]:bg-transparent [&_button]:text-[#898c9d] [&_button:hover]:bg-[#eeecff] [&_button:hover]:text-[#5f53d4]">
                                             <button aria-label={`查看${doc.name}`} onClick={() => setSelectedDoc(doc)}>
@@ -438,7 +460,6 @@ export function KnowledgeDetail({ id, section = 'docs' }: { id: string; section?
                                     <p className={emptyStateClass}>暂无文档，上传文件开始构建知识库。</p>
                                 )}
                             </div>
-                            <p className={demoNoteClass}>初始统计与文档为原型演示数据，仅展示部分示例文档。文件不会上传至云端。</p>
                         </>
                     )}
                     {section === 'recall' && (
@@ -469,9 +490,6 @@ export function KnowledgeDetail({ id, section = 'docs' }: { id: string; section?
                                     开始测试
                                 </PortalButton>
                             </form>
-                            <p className={demoNoteClass}>
-                                本地关键词匹配演示，不是向量检索或真实 AI 召回；仅检索示例文本和已导入的 TXT / Markdown。
-                            </p>
                             {testedQuery ? (
                                 <div className="mt-5">
                                     <div className="mb-2.5 flex items-center justify-between text-[10px] font-bold">
@@ -581,7 +599,6 @@ export function KnowledgeDetail({ id, section = 'docs' }: { id: string; section?
                     <strong className="text-[11px] text-[#4a4750]">{uploading ? '正在读取本地文件…' : '点击选择，或将文件拖拽至此'}</strong>
                     <small className="text-[9px]">支持 PDF、Word、Markdown、TXT，单个文件不超过 20MB</small>
                 </button>
-                <p className={demoNoteClass}>仅本地演示，不上传文件。PDF / Word 不进行解析；文本文件在浏览器内切片。</p>
             </PortalDialog>
             <Dialog
                 open={!!selectedDoc}
@@ -602,7 +619,7 @@ export function KnowledgeDetail({ id, section = 'docs' }: { id: string; section?
                             <div className="flex h-[45px] flex-none items-center justify-between border-b border-[var(--line)] bg-[#fafafe] px-5 text-[9px]">
                                 <span className={readyClass}>
                                     <i />
-                                    {selectedDoc.demo ? '示例文档' : selectedDoc.content.length ? '本地切片完成' : '待接入解析'}
+                                    {selectedDoc.status === 'COMPLETED' ? '已解析' : '待解析'}
                                 </span>
                                 <small className="text-[8px] text-[#a0a3b1]">最后更新：{selectedDoc.time}</small>
                             </div>
@@ -619,7 +636,7 @@ export function KnowledgeDetail({ id, section = 'docs' }: { id: string; section?
                                         文件类型<strong>{selectedDoc.name.split('.').pop()?.toUpperCase()}</strong>
                                     </span>
                                     <span>
-                                        切片方式<strong>{selectedDoc.demo ? '智能自动切片（示例）' : '本地固定长度切片'}</strong>
+                                        切片方式<strong>固定长度切片</strong>
                                     </span>
                                 </div>
                             </section>
@@ -632,14 +649,10 @@ export function KnowledgeDetail({ id, section = 'docs' }: { id: string; section?
                                     <article className="mb-[9px] rounded-[9px] border border-[var(--line)] p-3" key={index}>
                                         <span className="text-[8px] font-bold text-[#6257d7]"># {String(index + 1).padStart(3, '0')}</span>
                                         <p className="my-2 text-[9px] leading-[1.65] text-[#676a7c]">{content}</p>
-                                        <small className="text-[8px] text-[#a3a6b4]">
-                                            {content.length} 字符{selectedDoc.demo ? ' · 演示内容' : ''}
-                                        </small>
+                                        <small className="text-[8px] text-[#a3a6b4]">{content.length} 字符</small>
                                     </article>
                                 ))}
-                                {!selectedDoc.content.length && (
-                                    <p className={demoNoteClass}>此文件仅保存元信息。PDF / Word 解析服务尚未接入，没有可预览的切片。</p>
-                                )}
+                                {!selectedDoc.content.length && <p className={emptyStateClass}>暂无可预览的切片</p>}
                             </section>
                             <div className="flex min-h-[62px] items-center justify-end gap-2 border-t border-[var(--line)] px-5">
                                 <PortalButton onClick={() => setSelectedDoc(null)}>关闭</PortalButton>
@@ -723,7 +736,7 @@ export function KnowledgeDetail({ id, section = 'docs' }: { id: string; section?
                     </PortalButton>
                 </div>
             </PortalDialog>
-            <PortalDialog open={!!notice} onOpenChange={() => setNotice('')} title="本地演示提示" description={notice}>
+            <PortalDialog open={!!notice} onOpenChange={() => setNotice('')} title="提示" description={notice}>
                 <PortalButton onClick={() => setNotice('')}>知道了</PortalButton>
             </PortalDialog>
         </>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { getAvailableNodeOutputs } from '@/components/flow/settings/node-outputs'
 import { VariableEditor } from '@/components/flow/settings/variable-editor'
@@ -36,6 +36,7 @@ export function KnowledgeSettingsForm({ node, onSave, flowContext }: NodeSetting
         threshold: node.data.config.threshold ?? 0.2,
         outputFormat: node.data.config.outputFormat || 'text',
     })
+    const lastSavedRef = useRef(JSON.stringify(config))
     const availableOutputs = useMemo(
         () => (flowContext ? getAvailableNodeOutputs(node.id, flowContext.nodes, flowContext.edges) : []),
         [flowContext, node.id]
@@ -55,7 +56,13 @@ export function KnowledgeSettingsForm({ node, onSave, flowContext }: NodeSetting
     }, [])
 
     useEffect(() => {
-        onSave(config)
+        const current = JSON.stringify(config)
+        if (current === lastSavedRef.current) return
+        const timer = window.setTimeout(() => {
+            onSave(config)
+            lastSavedRef.current = current
+        }, 500)
+        return () => window.clearTimeout(timer)
     }, [config, onSave])
 
     const toggle = (id: string) =>
