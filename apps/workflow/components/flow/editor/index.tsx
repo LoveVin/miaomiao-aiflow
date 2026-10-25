@@ -39,7 +39,7 @@ const iconButtonClass =
     'grid size-[25px] shrink-0 place-items-center rounded-[5px] border-0 bg-transparent text-[#a5a7b7] hover:bg-[#f3f1fd] hover:text-[#6658bd]'
 const nodeIconColors: Record<NodeKind, string> = {
     start: 'bg-[#e9f7ef] text-[#53a383]',
-    model: 'bg-[#efebff] text-[#7b61d6]',
+    llm: 'bg-[#efebff] text-[#7b61d6]',
     knowledge: 'bg-[#eaf2fe] text-[#588ace]',
     http: 'bg-[#eaf2fe] text-[#5186cb]',
     condition: 'bg-[#fff4df] text-[#bd8735]',
@@ -60,14 +60,6 @@ function getNextNodeId(kind: NodeKind, nodes: FlowNode[]) {
 function normalizeWorkflowIds(nodes: FlowNode[], edges: FlowEdge[]) {
     const nodeIdMap = new Map<string, string>()
     const nextSequences = new Map<NodeKind, number>()
-    const normalizedNodes = nodes.map(node => {
-        const kind = node.type as NodeKind
-        const nextSequence = (nextSequences.get(kind) || 0) + 1
-        nextSequences.set(kind, nextSequence)
-        const nextId = `${kind}-${nextSequence}`
-        if (nextId !== node.id) nodeIdMap.set(node.id, nextId)
-        return nextId === node.id ? node : { ...node, id: nextId }
-    })
     const mapNodeId = (nodeId: string) => nodeIdMap.get(nodeId) || nodeId
     const normalizeVariableReferences = <T,>(value: T): T => {
         if (typeof value === 'string')
@@ -81,12 +73,17 @@ function normalizeWorkflowIds(nodes: FlowNode[], edges: FlowEdge[]) {
         }
         return value
     }
+    const normalizedNodes = nodes.map(node => {
+        const kind = ((node.type as string) === 'model' ? 'llm' : node.type) as NodeKind
+        const nextSequence = (nextSequences.get(kind) || 0) + 1
+        nextSequences.set(kind, nextSequence)
+        const nextId = `${kind}-${nextSequence}`
+        if (nextId !== node.id) nodeIdMap.set(node.id, nextId)
+        return { ...node, id: nextId, type: kind, data: { ...node.data, config: normalizeVariableReferences(node.data.config) } }
+    })
 
     return {
-        nodes: normalizedNodes.map(node => ({
-            ...node,
-            data: { ...node.data, config: normalizeVariableReferences(node.data.config) },
-        })),
+        nodes: normalizedNodes,
         edges: edges.map(edge => ({ ...edge, id: mapNodeId(edge.id), source: mapNodeId(edge.source), target: mapNodeId(edge.target) })),
     }
 }

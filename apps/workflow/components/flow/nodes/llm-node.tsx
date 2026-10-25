@@ -8,7 +8,7 @@ import { memo } from 'react'
 import { ICON_MAP } from '@/components/flow/icon-map'
 import type { FlowNode } from '@/types/workflow'
 
-export const ModelNode = memo(function ModelNode({ data, selected }: NodeProps<FlowNode>) {
+export const LLMNode = memo(function LLMNode({ data, selected }: NodeProps<FlowNode>) {
     const model = data.config.model || '未选择模型'
 
     return (
@@ -20,7 +20,7 @@ export const ModelNode = memo(function ModelNode({ data, selected }: NodeProps<F
         >
             <div className="mb-3 flex items-center">
                 <span className="mr-3 grid place-items-center rounded-lg bg-[#7b61d6] p-2 text-white shadow-sm">
-                    <ICON_MAP.model size={14} />
+                    <ICON_MAP.llm size={14} />
                 </span>
                 <span className="text-[13px] font-bold">{data.label}</span>
             </div>

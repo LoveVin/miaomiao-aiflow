@@ -1,6 +1,6 @@
 import type { DemoExecution, FlowEdge, FlowNode } from '@/types/workflow'
 
-const supportedKinds = ['start', 'output', 'model', 'knowledge', 'http', 'condition'] as const
+const supportedKinds = ['start', 'output', 'llm', 'knowledge', 'http', 'condition'] as const
 
 const interpolate = (text: string, values: Record<string, string>, nodeOutputs: Map<string, Record<string, string>>) => {
     const withNodeOutputs = text.replace(/\$\{([^.}]+)\.([^}]+)\}/g, (match, nodeId: string, variableName: string) => {
@@ -87,7 +87,7 @@ function simulateWorkflow(nodes: FlowNode[], edges: FlowEdge[], input: Record<st
         if (node.type === 'start') {
             stepOutputs = Object.fromEntries(inputs.map(item => [item.name, values[item.name] ?? '']))
         }
-        if (node.type === 'model') {
+        if (node.type === 'llm') {
             const prompt = config.userPrompt || config.prompt || ''
             values.content = `[本地模拟 · 非 AI 生成]\n${interpolate(prompt, values, nodeOutputs)}`
             detail = `已替换提示词变量；未调用 ${config.model ?? '模型'}`

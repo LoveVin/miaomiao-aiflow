@@ -21,7 +21,7 @@ const iconButtonClass =
     'grid size-[25px] shrink-0 place-items-center rounded-[5px] border-0 bg-transparent text-[#a5a7b7] hover:bg-[#f3f1fd] hover:text-[#6658bd]'
 const nodeIconColors: Record<NodeKind, string> = {
     start: 'bg-[#e9f7ef] text-[#53a383]',
-    model: 'bg-[#efebff] text-[#7b61d6]',
+    llm: 'bg-[#efebff] text-[#7b61d6]',
     knowledge: 'bg-[#eaf2fe] text-[#588ace]',
     http: 'bg-[#eaf2fe] text-[#5186cb]',
     condition: 'bg-[#fff4df] text-[#bd8735]',
@@ -30,7 +30,7 @@ const nodeIconColors: Record<NodeKind, string> = {
 
 const formComponents: Record<NodeKind, ComponentType<NodeSettingsFormProps<NodeConfig>>> = {
     start: StartSettingsForm,
-    model: LLMSettingsForm,
+    llm: LLMSettingsForm,
     knowledge: KnowledgeSettingsForm,
     http: HttpSettingsForm,
     condition: ConditionSettingsForm,

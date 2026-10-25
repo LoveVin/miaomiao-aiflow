@@ -1,6 +1,6 @@
 import type { Edge, Node } from '@xyflow/react'
 
-export type NodeKind = 'start' | 'output' | 'model' | 'knowledge' | 'http' | 'condition'
+export type NodeKind = 'start' | 'output' | 'llm' | 'knowledge' | 'http' | 'condition'
 
 export type ParamType = 'string' | 'number' | 'boolean' | 'array' | 'object'
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'

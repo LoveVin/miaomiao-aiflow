@@ -29,7 +29,7 @@ export function getNodeTypeOutputs(nodeType: NodeKind, nodeData?: FlowNode): Nod
     switch (nodeType) {
         case 'start':
             return getStartOutputs(nodeData?.data.config?.inputs)
-        case 'model':
+        case 'llm':
             return [
                 { name: 'output', label: '输出内容', type: 'string', description: '模型生成的文本内容' },
                 { name: 'tokens', label: 'Token 数', type: 'number', description: '消耗的 token 数量' },
@@ -64,7 +64,7 @@ export function getNodeTypeLabel(nodeType: NodeKind) {
     const labels: Record<NodeKind, string> = {
         start: '开始',
         output: '结束',
-        model: '大模型',
+        llm: '大模型',
         knowledge: '知识库',
         http: 'HTTP 请求',
         condition: '条件',
