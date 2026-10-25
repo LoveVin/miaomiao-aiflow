@@ -47,6 +47,46 @@ const nodeIconColors: Record<NodeKind, string> = {
 }
 const AUTO_SAVE_DELAY = 2000
 
+function getNextNodeId(kind: NodeKind, nodes: FlowNode[]) {
+    const nodePattern = new RegExp(`^${kind}-(\\d+)$`)
+    const maxSequence = nodes.reduce((max, node) => {
+        const sequence = nodePattern.exec(node.id)?.[1]
+        return sequence ? Math.max(max, Number(sequence)) : max
+    }, 0)
+
+    return `${kind}-${maxSequence + 1}`
+}
+
+function normalizeWorkflowIds(nodes: FlowNode[], edges: FlowEdge[]) {
+    const nodeIdMap = new Map<string, string>()
+    const normalizedNodes = nodes.map(node => {
+        const nextId = getNextNodeId(node.type as NodeKind, normalizedNodes)
+        if (nextId !== node.id) nodeIdMap.set(node.id, nextId)
+        return nextId === node.id ? node : { ...node, id: nextId }
+    })
+    const mapNodeId = (nodeId: string) => nodeIdMap.get(nodeId) || nodeId
+    const normalizeVariableReferences = <T,>(value: T): T => {
+        if (typeof value === 'string')
+            return value.replace(
+                /\$\{([^.]+)\.([^}]+)\}/g,
+                (_, nodeId: string, variableName: string) => `\${${mapNodeId(nodeId)}.${variableName}}`
+            ) as T
+        if (Array.isArray(value)) return value.map(item => normalizeVariableReferences(item)) as T
+        if (value && typeof value === 'object') {
+            return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, normalizeVariableReferences(item)])) as T
+        }
+        return value
+    }
+
+    return {
+        nodes: normalizedNodes.map(node => ({
+            ...node,
+            data: { ...node.data, config: normalizeVariableReferences(node.data.config) },
+        })),
+        edges: edges.map(edge => ({ ...edge, id: mapNodeId(edge.id), source: mapNodeId(edge.source), target: mapNodeId(edge.target) })),
+    }
+}
+
 function EditorInner({ appId, appName, initialNodes, initialEdges }: FlowEditorProps) {
     const [nodes, setNodes] = useState<FlowNode[]>(initialNodes ?? [])
     const [edges, setEdges] = useState<FlowEdge[]>(initialEdges ?? [])
@@ -104,8 +144,9 @@ function EditorInner({ appId, appName, initialNodes, initialEdges }: FlowEditorP
                 }
                 const workflow = await workflowService.get(appId)
                 if (cancelled) return
-                setNodes(workflow.nodes as FlowNode[])
-                setEdges(workflow.edges as FlowEdge[])
+                const normalizedWorkflow = normalizeWorkflowIds(workflow.nodes as FlowNode[], workflow.edges as FlowEdge[])
+                setNodes(normalizedWorkflow.nodes)
+                setEdges(normalizedWorkflow.edges)
                 setSavedAt(workflow.updatedAt)
                 const runs = await workflowService.getExecutions(appId)
                 if (cancelled) return
@@ -166,10 +207,10 @@ function EditorInner({ appId, appName, initialNodes, initialEdges }: FlowEditorP
                 setMessageType('error')
                 return
             }
-            const id = `${kind}-${crypto.randomUUID()}`
+            const id = getNextNodeId(kind, nodesRef.current)
             const center = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 })
-            setNodes(old => [
-                ...old,
+            setNodes(currentNodes => [
+                ...currentNodes,
                 {
                     id,
                     type: kind,

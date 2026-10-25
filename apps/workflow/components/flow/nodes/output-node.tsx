@@ -3,13 +3,19 @@
 import type { NodeProps } from '@xyflow/react'
 import { Handle, Position } from '@xyflow/react'
 import clsx from 'clsx'
-import { memo } from 'react'
+import { memo, useMemo } from 'react'
 
 import { ICON_MAP } from '@/components/flow/icon-map'
 import type { FlowNode } from '@/types/workflow'
 
-export const OutputNode = memo(function OutputNode({ data, selected }: NodeProps<FlowNode>) {
+import { useFlowEditorContext } from '../editor/context'
+import { getAvailableNodeOutputs } from '../settings/node-outputs'
+import { VariableRenderer } from '../settings/variable-renderer'
+
+export const OutputNode = memo(function OutputNode({ id, data, selected }: NodeProps<FlowNode>) {
     const outputs = data.config.outputs || []
+    const { nodes, edges } = useFlowEditorContext()
+    const availableOutputs = useMemo(() => getAvailableNodeOutputs(id, nodes || [], edges || []), [edges, id, nodes])
 
     return (
         <div
@@ -27,9 +33,13 @@ export const OutputNode = memo(function OutputNode({ data, selected }: NodeProps
             {outputs.length ? (
                 <div className="mt-2 flex flex-col gap-1.5">
                     {outputs.map((output, index) => (
-                        <p className="m-0 truncate text-xs text-[#82879d]" key={`${output.name}-${index}`} title={output.value}>
-                            {output.value || output.name}
-                        </p>
+                        <div className="flex flex-row gap-1" key={`${output.name}-${index}`}>
+                            <VariableRenderer
+                                availableOutputs={availableOutputs}
+                                className="w-full text-xs text-[#82879d]"
+                                value={output.value}
+                            />
+                        </div>
                     ))}
                 </div>
             ) : null}
