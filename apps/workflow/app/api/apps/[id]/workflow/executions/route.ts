@@ -18,8 +18,10 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
             items: records.map(record => ({
                 id: record.id,
                 time: record.startedAt.toISOString(),
+                completedAt: record.completedAt?.toISOString(),
                 duration: record.duration ?? 0,
                 success: record.status === 'SUCCESS',
+                error: record.error,
                 input: record.inputs ?? {},
                 output:
                     typeof record.outputs === 'string' ? record.outputs : ((record.outputs as { output?: string } | null)?.output ?? ''),

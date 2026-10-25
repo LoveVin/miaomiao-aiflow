@@ -95,8 +95,10 @@ export interface FlowEditorHeaderProps {
 export interface DemoExecution {
     id: string
     time: string
+    completedAt?: string
     duration: number
     success: boolean
+    error?: string | null
     input: Record<string, string>
     output: string
     steps: NodeTrace[]

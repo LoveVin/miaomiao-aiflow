@@ -5,6 +5,7 @@ import { ChevronDown, CircleAlert, CircleCheck, Clock, Copy, Hash, Play, Zap } f
 import { type ReactNode, useState } from 'react'
 
 import { getNodeColor, ICON_MAP } from '@/components/flow/icon-map'
+import { PARAM_TYPE_LABELS } from '@/components/flow/param-types'
 import { PortalButton } from '@/components/shared'
 import type { DemoExecution, FlowInput, NodeKind, NodeTraceStatus } from '@/types/workflow'
 
@@ -29,6 +30,19 @@ function formatDateTime(time: string) {
         minute: '2-digit',
         second: '2-digit',
     })
+}
+
+function formatJson(value: unknown) {
+    if (value === null || value === undefined || value === '') return ''
+    if (typeof value === 'string') {
+        try {
+            return JSON.stringify(JSON.parse(value), null, 2)
+        } catch {
+            return value
+        }
+    }
+
+    return JSON.stringify(value, null, 2)
 }
 
 function CollapsibleCard({
@@ -81,9 +95,9 @@ function CopyButton({ value }: { value: string }) {
     )
 }
 
-function JsonCollapsibleCard({ title, value, emptyText }: { title: string; value: Record<string, string>; emptyText: string }) {
+function JsonCollapsibleCard({ title, value, emptyText }: { title: string; value: unknown; emptyText: string }) {
     const [open, setOpen] = useState(false)
-    const formatted = Object.keys(value).length ? JSON.stringify(value, null, 2) : ''
+    const formatted = formatJson(value)
 
     return (
         <CollapsibleCard open={open} onOpenChange={setOpen} title={title}>
@@ -99,20 +113,22 @@ function JsonCollapsibleCard({ title, value, emptyText }: { title: string; value
     )
 }
 
-function OutputCollapsibleCard({ output }: { output: string }) {
-    const [open, setOpen] = useState(false)
+function JsonViewer({ output }: { output: string }) {
+    const formatted = formatJson(output)
+
+    if (!formatted) {
+        return (
+            <div className="rounded-[10px] border border-dashed border-[#dcdfe9] py-6 text-center text-[12px] text-[#9a9db0]">
+                无输出数据
+            </div>
+        )
+    }
 
     return (
-        <CollapsibleCard open={open} onOpenChange={setOpen} title="输出结果">
-            {output ? (
-                <div className="group relative">
-                    <pre className={`${codeBlockClass} max-h-[280px] overflow-auto bg-white`}>{output}</pre>
-                    <CopyButton value={output} />
-                </div>
-            ) : (
-                <p className="m-0 text-[12px] text-[#9a9db0]">输出为空</p>
-            )}
-        </CollapsibleCard>
+        <div className="group relative overflow-hidden rounded-[10px] border border-[#eceef4]">
+            <pre className={`${codeBlockClass} max-h-[400px] overflow-auto bg-[#f7f7fc]`}>{formatted}</pre>
+            <CopyButton value={formatted} />
+        </div>
     )
 }
 
@@ -245,10 +261,14 @@ export function TestRunTabs({
                         >
                             {inputParams.map(item => (
                                 <label className="mb-[18px] flex flex-col gap-2 text-[12px] font-[550] text-[#63687d]" key={item.id}>
-                                    <span>
-                                        {item.name}
-                                        {item.required ? ' *' : ''}
-                                        <small className="text-[12px] font-normal text-[#a3a7b8]"> {item.type}</small>
+                                    <span className="flex items-center gap-1.5">
+                                        <span>
+                                            {item.name}
+                                            {item.required ? <span className="text-red-500"> *</span> : null}
+                                        </span>
+                                        <small className="rounded bg-[#f2f3f8] px-1.5 py-0.5 text-[10px] font-normal text-[#85899a]">
+                                            {PARAM_TYPE_LABELS[item.type]}
+                                        </small>
                                     </span>
                                     <textarea
                                         className={fieldControlClass}
@@ -289,52 +309,108 @@ export function TestRunTabs({
                 ) : null}
                 <Tabs.Content value="result" className="m-0 px-[22px] py-[20px] outline-none">
                     {execution ? (
-                        <>
-                            <div className="mb-4 flex items-center gap-2">
-                                {execution.success ? (
-                                    <CircleCheck size={16} className="text-[#6eaf94]" />
-                                ) : (
-                                    <CircleAlert size={16} className="text-[#d18282]" />
-                                )}
-                                <strong className="text-[13px] font-[650] text-[#4d5164]">
-                                    {execution.success ? '执行成功' : '执行失败'}
-                                </strong>
+                        <div className="flex flex-col gap-4">
+                            <div
+                                className={`flex items-center gap-2 rounded-[10px] border p-3 ${
+                                    execution.success
+                                        ? 'border-[#bfe5ce] bg-[#eff8f2] text-[#3d7957]'
+                                        : 'border-[#f1c4c7] bg-[#fdf1f2] text-[#a94448]'
+                                }`}
+                            >
+                                {execution.success ? <CircleCheck size={20} /> : <CircleAlert size={20} />}
+                                <span className="text-[13px] font-[600]">{execution.success ? '执行成功' : '执行失败'}</span>
                             </div>
-                            <OutputCollapsibleCard output={execution.output} />
-                        </>
+                            {execution.error ? (
+                                <div className="overflow-hidden rounded-[10px] border border-[#f1c4c7] bg-[#fdf1f2] p-4">
+                                    <h4 className="m-0 mb-2 text-[13px] font-[600] text-[#a94448]">错误信息</h4>
+                                    <p className="m-0 break-all font-mono text-[12px] leading-[1.8] text-[#c94f5b]">{execution.error}</p>
+                                </div>
+                            ) : null}
+                            <section>
+                                <h3 className={sectionTitleClass}>输出数据</h3>
+                                <JsonViewer output={execution.output} />
+                            </section>
+                        </div>
                     ) : null}
                 </Tabs.Content>
                 <Tabs.Content value="details" className="m-0 px-[22px] py-[20px] outline-none">
                     {execution ? (
-                        <>
-                            <section className="grid grid-cols-2 gap-3">
-                                {[
-                                    { icon: CircleCheck, label: '状态', value: execution.success ? '成功' : '失败' },
-                                    { icon: Clock, label: '耗时', value: formatDuration(execution.duration) },
-                                    { icon: Zap, label: 'Token 消耗', value: '0' },
-                                    { icon: Hash, label: '记录时间', value: formatDateTime(execution.time) },
-                                ].map(item => {
-                                    const Icon = item.icon
-                                    return (
-                                        <div className="rounded-[10px] border border-[#edeef5] p-3" key={item.label}>
-                                            <div className="flex items-center gap-2 text-[#989bad]">
-                                                <Icon size={14} />
-                                                <span className="text-[12px]">{item.label}</span>
-                                            </div>
-                                            <p className="mt-2 mb-0 break-all text-[12px] font-[600] text-[#4d5164]">{item.value}</p>
+                        <div className="flex flex-col gap-4">
+                            <section className="rounded-[10px] border border-[#edeef5] p-4">
+                                <h4 className="m-0 mb-3 text-[13px] font-[650] text-[#4d5164]">执行摘要</h4>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="flex items-center gap-2">
+                                        {execution.success ? (
+                                            <CircleCheck size={20} className="shrink-0 text-[#6eaf94]" />
+                                        ) : (
+                                            <CircleAlert size={20} className="shrink-0 text-[#d18282]" />
+                                        )}
+                                        <div>
+                                            <p className="m-0 text-[11px] text-[#9a9db0]">状态</p>
+                                            <p className="m-0 text-[12px] font-[600] text-[#4d5164]">
+                                                {execution.success ? '成功' : '失败'}
+                                            </p>
                                         </div>
-                                    )
-                                })}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Clock size={20} className="shrink-0 text-[#9a9db0]" />
+                                        <div>
+                                            <p className="m-0 text-[11px] text-[#9a9db0]">耗时</p>
+                                            <p className="m-0 text-[12px] font-[600] text-[#4d5164]">
+                                                {formatDuration(execution.duration)}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Zap size={20} className="shrink-0 text-[#9a9db0]" />
+                                        <div>
+                                            <p className="m-0 text-[11px] text-[#9a9db0]">Token 消耗</p>
+                                            <p className="m-0 text-[12px] font-[600] text-[#4d5164]">-</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Hash size={20} className="shrink-0 text-[#9a9db0]" />
+                                        <div className="min-w-0">
+                                            <p className="m-0 text-[11px] text-[#9a9db0]">执行 ID</p>
+                                            <p
+                                                className="m-0 max-w-[120px] truncate font-mono text-[12px] font-[600] text-[#4d5164]"
+                                                title={execution.id}
+                                            >
+                                                {execution.id}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
                             </section>
-                            <section className="mt-5">
-                                <h3 className={sectionTitleClass}>记录 ID</h3>
-                                <p className="m-0 break-all rounded-[10px] bg-[#f7f7fc] p-3 text-[12px] text-[#7f8199]">{execution.id}</p>
+                            <section className="rounded-[10px] border border-[#edeef5] p-4">
+                                <h4 className="m-0 mb-2 text-[13px] font-[650] text-[#4d5164]">时间信息</h4>
+                                <div className="flex justify-between text-[12px]">
+                                    <span className="text-[#9a9db0]">开始时间</span>
+                                    <span className="font-mono text-[#4d5164]">{formatDateTime(execution.time)}</span>
+                                </div>
+                                <div className="mt-1 flex justify-between text-[12px]">
+                                    <span className="text-[#9a9db0]">结束时间</span>
+                                    <span className="font-mono text-[#4d5164]">
+                                        {formatDateTime(
+                                            execution.completedAt ??
+                                                new Date(new Date(execution.time).getTime() + execution.duration).toISOString()
+                                        )}
+                                    </span>
+                                </div>
                             </section>
-                            <div className="mt-5 flex flex-col gap-3">
+                            <div className="flex flex-col gap-3">
                                 <JsonCollapsibleCard title="输入参数" value={execution.input} emptyText="无输入数据" />
-                                <OutputCollapsibleCard output={execution.output} />
+                                <JsonCollapsibleCard title="输出结果" value={execution.output} emptyText="输出为空" />
                             </div>
-                        </>
+                            {execution.error ? (
+                                <div className="overflow-hidden rounded-[10px] border border-[#f1c4c7] bg-[#fdf1f2] p-4">
+                                    <h4 className="m-0 mb-2 text-[13px] font-[600] text-[#a94448]">错误详情</h4>
+                                    <pre className="m-0 break-all font-mono text-[12px] leading-[1.8] whitespace-pre-wrap text-[#c94f5b]">
+                                        {execution.error}
+                                    </pre>
+                                </div>
+                            ) : null}
+                        </div>
                     ) : null}
                 </Tabs.Content>
                 <Tabs.Content value="trace" className="m-0 px-[22px] py-[20px] outline-none">
