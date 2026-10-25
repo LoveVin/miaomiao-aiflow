@@ -21,11 +21,12 @@ import {
     textFieldClass,
     useLocalData,
 } from '@/components/shared'
-import { initialInstalledPlugins, initialPlugins } from '@/mocks/plugins'
+
+type Plugin = { name: string; desc: string; icon: string; color: string; tag: string; category: string }
 
 export default function PluginsPage() {
-    const [plugins, setPlugins] = useLocalData('miaomiao.plugins.v1', initialPlugins)
-    const [installed, setInstalled] = useLocalData('miaomiao.installed-plugins.v1', initialInstalledPlugins)
+    const [plugins, setPlugins] = useLocalData<Plugin[]>('miaomiao.plugins.v1', [])
+    const [installed, setInstalled] = useLocalData<string[]>('miaomiao.installed-plugins.v1', [])
     const [search, setSearch] = useState('')
     const [category, setCategory] = useState('精选')
     const [modal, setModal] = useState(false)

@@ -43,6 +43,7 @@ model App {
   name        String
   description String?
   icon        String
+  iconColor   String @default("violet")
   type        AppType  @default(WORKFLOW)
   tags        String[] @default([])
   config      Json? // 应用配置

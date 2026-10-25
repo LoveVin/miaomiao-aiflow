@@ -49,6 +49,12 @@ export interface FlowEditorHeaderProps {
     onSave: () => void
     onTestRun: () => void
     onPublish: () => void
+    onUnpublish: () => void
+    executions: DemoExecution[]
+    onSelectExecution: (id: string) => void
+    publishing: boolean
+    isPublished: boolean
+    publishedAt: string | null
 }
 export interface DemoExecution {
     id: string

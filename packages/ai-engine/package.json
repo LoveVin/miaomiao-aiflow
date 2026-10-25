@@ -1,8 +1,12 @@
 {
     "name": "@miaomiao-aiflow/ai-engine",
+    "private": true,
     "version": "1.0.0",
     "description": "喵喵AI应用引擎",
-    "main": "index.js",
+    "source": "src/index.ts",
+    "main": "build/cjs/index.cjs",
+    "module": "build/esm/index.js",
+    "types": "build/esm/index.d.ts",
     "scripts": {
         "build:watch": "tsup --watch",
         "build": "tsup --clean",

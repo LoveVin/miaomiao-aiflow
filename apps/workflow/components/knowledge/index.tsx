@@ -3,7 +3,7 @@
 import { ChevronLeft, CircleHelp, Database, FileText, Plus, Search, Settings, Trash2, Upload, Workflow } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { type FormEvent, useRef, useState } from 'react'
+import { type FormEvent, useEffect, useRef, useState } from 'react'
 
 import {
     colorClasses,
@@ -17,12 +17,11 @@ import {
     SearchField,
     textAreaClass,
     textFieldClass,
-    useLocalData,
 } from '@/components/shared'
 import { IconPicker, knowledgeIconOptions, RecordIcon } from '@/components/shared/icon-picker'
 import { cn } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
-import { type Document, importKnowledgeFiles, initialLibraries, type Library, recallKnowledge } from '@/mocks/knowledge'
+import { type KnowledgeDocument, type KnowledgeLibrary, knowledgeService, type RawKnowledgeBase } from '@/lib/services/knowledge-service'
 
 const readyClass =
     'ready flex items-center gap-1.5 text-[#4c9f78] [&_i]:size-[5px] [&_i]:rounded-full [&_i]:bg-[#49b788] [&_i]:shadow-[0_0_0_3px_#e8f7f1]'
@@ -36,40 +35,60 @@ const fileTypeClass =
     'grid h-[37px] w-[31px] shrink-0 place-items-center rounded-[5px] bg-[#eceaff] text-[7px] font-extrabold not-italic text-[#6255dd]'
 const navLinkClass = 'flex h-[38px] items-center gap-[9px] rounded-lg px-2.5 text-[10px] no-underline hover:bg-[#f1f0f8]'
 
+function toUiLibrary(item: RawKnowledgeBase): KnowledgeLibrary {
+    return {
+        id: item.id,
+        name: item.name,
+        desc: item.description ?? '',
+        docs: item.documents.length,
+        slices: item.documents.reduce((total, document) => total + document.chunkCount, 0),
+        time: new Date(item.updatedAt).toLocaleString('zh-CN'),
+        color: item.iconColor,
+        icon: item.icon,
+        mode: item.retrievalMode.toLowerCase(),
+        documents: item.documents.map(document => ({
+            id: document.id,
+            name: document.name,
+            size:
+                document.size > 1048576
+                    ? `${(document.size / 1048576).toFixed(1)} MB`
+                    : `${Math.max(1, Math.round(document.size / 1024))} KB`,
+            slices: document.chunkCount,
+            time: new Date(document.updatedAt).toLocaleString('zh-CN'),
+            content: document.content?.match(/[\s\S]{1,500}/g) ?? [],
+            demo: false,
+        })),
+    }
+}
+
 export function KnowledgeList() {
     const router = useRouter()
-    const [libraries, setLibraries] = useLocalData('miaomiao.knowledge.v1', initialLibraries)
+    const [libraries, setLibraries] = useState<KnowledgeLibrary[]>([])
     const [search, setSearch] = useState('')
     const [modal, setModal] = useState(false)
     const [name, setName] = useState('')
     const [desc, setDesc] = useState('')
     const [selectedIcon, setSelectedIcon] = useState(knowledgeIconOptions[0])
+    const [error, setError] = useState('')
+
+    useEffect(() => {
+        knowledgeService
+            .getList()
+            .then(result => setLibraries(result.items.map(toUiLibrary)))
+            .catch(error => setError(error instanceof Error ? error.message : '加载知识库失败'))
+    }, [])
+
     function openCreate() {
         setName('')
         setDesc('')
         setSelectedIcon(knowledgeIconOptions[0])
         setModal(true)
     }
-    function create(event: FormEvent) {
+    async function create(event: FormEvent) {
         event.preventDefault()
         if (!name.trim()) return
-        const id = crypto.randomUUID()
-        setLibraries(old => [
-            ...old,
-            {
-                id,
-                name: name.trim(),
-                desc,
-                docs: 0,
-                slices: 0,
-                time: '刚刚',
-                icon: selectedIcon.icon,
-                color: selectedIcon.color,
-                mode: 'auto',
-                documents: [],
-            },
-        ])
-        router.push(`/knowledge/${id}`)
+        const result = await knowledgeService.create({ name: name.trim(), description: desc, icon: selectedIcon.icon })
+        router.push(`/knowledge/${result.id}`)
     }
     const visible = libraries.filter(library => `${library.name}${library.desc}`.includes(search))
     return (
@@ -198,17 +217,36 @@ export function KnowledgeList() {
 
 export function KnowledgeDetail({ id, section = 'docs' }: { id: string; section?: 'docs' | 'recall' | 'settings' }) {
     const router = useRouter()
-    const [libraries, setLibraries] = useLocalData('miaomiao.knowledge.v1', initialLibraries)
+    const [libraries, setLibraries] = useState<KnowledgeLibrary[]>([])
     const library = libraries.find(item => item.id === id)
     const [upload, setUpload] = useState(false)
-    const [selectedDoc, setSelectedDoc] = useState<Document | null>(null)
-    const [deletingDoc, setDeletingDoc] = useState<Document | null>(null)
+    const [selectedDoc, setSelectedDoc] = useState<KnowledgeDocument | null>(null)
+    const [deletingDoc, setDeletingDoc] = useState<KnowledgeDocument | null>(null)
     const [deleteLibrary, setDeleteLibrary] = useState(false)
     const [notice, setNotice] = useState('')
     const [query, setQuery] = useState('')
     const [testedQuery, setTestedQuery] = useState('')
+    const [results, setResults] = useState<{ documentId: string; documentName: string; content: string; index: number; score: number }[]>(
+        []
+    )
     const [uploading, setUploading] = useState(false)
     const fileInput = useRef<HTMLInputElement>(null)
+
+    useEffect(() => {
+        let cancelled = false
+        knowledgeService
+            .getList()
+            .then(result => {
+                if (cancelled) return
+                setLibraries(result.items.map(toUiLibrary))
+            })
+            .catch(error => {
+                if (!cancelled) setNotice(error instanceof Error ? error.message : '加载知识库失败')
+            })
+        return () => {
+            cancelled = true
+        }
+    }, [id])
     if (!library)
         return (
             <div className={emptyStateClass}>
@@ -218,43 +256,63 @@ export function KnowledgeDetail({ id, section = 'docs' }: { id: string; section?
             </div>
         )
     const activeLibrary = library
-    function updateLibrary(update: (item: Library) => Library) {
+    function updateLibrary(update: (item: KnowledgeLibrary) => KnowledgeLibrary) {
         setLibraries(old => old.map(item => (item.id === id ? update(item) : item)))
     }
     async function importFiles(files: FileList | File[]) {
         setUploading(true)
-        const { imported, rejected } = await importKnowledgeFiles(files)
-        if (imported.length)
-            updateLibrary(item => ({
-                ...item,
-                documents: [...item.documents, ...imported],
-                docs: item.docs + imported.length,
-                slices: item.slices + imported.reduce((total, doc) => total + doc.slices, 0),
-                time: '刚刚',
-            }))
-        setUploading(false)
-        setUpload(false)
-        setNotice(
-            rejected.length
-                ? `未导入 ${rejected.join('、')}：仅支持 PDF、Word、Markdown、TXT，单个文件不超过 20MB。其余文件已添加。`
-                : '已添加到本地演示空间。TXT / Markdown 使用本地固定长度切片；PDF / Word 仅保存文件元信息，尚未接入解析服务，不会生成虚假切片。'
-        )
+        try {
+            const { imported, rejected } = await knowledgeService.uploadDocuments(id, Array.from(files))
+            if (imported.length)
+                updateLibrary(item => ({
+                    ...item,
+                    documents: [...item.documents, ...imported.map(document => ({ ...document, demo: false }))],
+                    docs: item.docs + imported.length,
+                    slices: item.slices + imported.reduce((total, doc) => total + doc.slices, 0),
+                    time: '刚刚',
+                }))
+            setNotice(
+                rejected.length
+                    ? `未导入 ${rejected.join('、')}：仅支持 PDF、Word、Markdown、TXT，单个文件不超过 20MB。其余文件已添加。`
+                    : '文档已保存到数据库。TXT / Markdown 已生成固定长度切片；PDF / Word 已保存元信息，等待解析服务接入。'
+            )
+        } catch (error) {
+            setNotice(error instanceof Error ? error.message : '上传文档失败')
+        } finally {
+            setUploading(false)
+            setUpload(false)
+        }
     }
-    function saveSettings(event: FormEvent<HTMLFormElement>) {
+    async function saveSettings(event: FormEvent<HTMLFormElement>) {
         event.preventDefault()
         const data = new FormData(event.currentTarget)
         const name = String(data.get('name') || '').trim()
+        const mode = String(data.get('mode') || 'vector')
         if (!name) return
-        updateLibrary(item => ({
-            ...item,
-            name,
-            desc: String(data.get('desc') || ''),
-            mode: String(data.get('mode') || 'auto'),
-            time: '刚刚',
-        }))
-        setNotice('知识库设置已保存到当前浏览器。切片配置为演示设置，不会调用远程处理服务。')
+        try {
+            await knowledgeService.update(id, { name, description: String(data.get('desc') || ''), retrievalMode: mode.toUpperCase() })
+            updateLibrary(item => ({
+                ...item,
+                name,
+                desc: String(data.get('desc') || ''),
+                mode: String(data.get('mode') || 'auto'),
+                time: '刚刚',
+            }))
+            setNotice('知识库设置已保存到数据库。')
+        } catch (error) {
+            setNotice(error instanceof Error ? error.message : '保存设置失败')
+        }
     }
-    const results = recallKnowledge(activeLibrary.documents, testedQuery)
+    async function searchKnowledge(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault()
+        try {
+            const response = await knowledgeService.search(id, query.trim())
+            setResults(response.results)
+            setTestedQuery(query.trim())
+        } catch (error) {
+            setNotice(error instanceof Error ? error.message : '召回测试失败')
+        }
+    }
     return (
         <>
             <div className="mb-3 flex-none">
@@ -393,10 +451,7 @@ export function KnowledgeDetail({ id, section = 'docs' }: { id: string; section?
                             </div>
                             <form
                                 className="grid grid-cols-[1fr_auto] items-end gap-[9px] rounded-[10px] border border-[var(--line)] bg-[#fafafe] p-[17px] max-[480px]:grid-cols-1 [&_.button]:h-14"
-                                onSubmit={event => {
-                                    event.preventDefault()
-                                    setTestedQuery(query.trim())
-                                }}
+                                onSubmit={searchKnowledge}
                             >
                                 <label className="col-span-full text-[9px] font-[650] text-[#5c6072]" htmlFor="recall-query">
                                     测试问题
@@ -428,18 +483,16 @@ export function KnowledgeDetail({ id, section = 'docs' }: { id: string; section?
                                     {results.map(result => (
                                         <article
                                             className="mb-[9px] rounded-[9px] border border-[var(--line)] p-[14px]"
-                                            key={`${result.doc.id}-${result.index}`}
+                                            key={`${result.documentId}-${result.index}`}
                                         >
                                             <div className="flex justify-between">
-                                                <strong className="text-[9px]">{result.doc.name}</strong>
+                                                <strong className="text-[9px]">{result.documentName}</strong>
                                                 <span className="rounded-[5px] bg-[#eaf7f1] px-1.5 py-[3px] text-[8px] text-[#57a181]">
-                                                    匹配 {result.score} 个关键词
+                                                    匹配 {result.score}
                                                 </span>
                                             </div>
                                             <p className="text-[9px] leading-[1.7] text-[#696d7e]">{result.content}</p>
-                                            <small className="text-[8px] text-[#a2a5b2]">
-                                                切片 #{result.index + 1} · {result.doc.demo ? '示例文本' : '本地文本'}
-                                            </small>
+                                            <small className="text-[8px] text-[#a2a5b2]">切片 #{result.index + 1} · 数据库文本</small>
                                         </article>
                                     ))}
                                     {results.length === 0 && <p className={emptyStateClass}>未找到匹配内容，请尝试更具体的关键词。</p>}
@@ -620,15 +673,24 @@ export function KnowledgeDetail({ id, section = 'docs' }: { id: string; section?
                     <PortalButton
                         variant="destructive"
                         onClick={() => {
-                            if (deletingDoc)
-                                updateLibrary(item => ({
-                                    ...item,
-                                    documents: item.documents.filter(doc => doc.id !== deletingDoc.id),
-                                    docs: Math.max(0, item.docs - 1),
-                                    slices: Math.max(0, item.slices - deletingDoc.slices),
-                                    time: '刚刚',
-                                }))
-                            setDeletingDoc(null)
+                            if (deletingDoc) {
+                                void (async () => {
+                                    try {
+                                        await knowledgeService.deleteDocument(id, deletingDoc.id)
+                                        const removed = deletingDoc
+                                        updateLibrary(item => ({
+                                            ...item,
+                                            documents: item.documents.filter(doc => doc.id !== removed.id),
+                                            docs: Math.max(0, item.docs - 1),
+                                            slices: Math.max(0, item.slices - removed.slices),
+                                            time: '刚刚',
+                                        }))
+                                        setDeletingDoc(null)
+                                    } catch (error) {
+                                        setNotice(error instanceof Error ? error.message : '删除文档失败')
+                                    }
+                                })()
+                            }
                         }}
                     >
                         确认删除
@@ -646,8 +708,15 @@ export function KnowledgeDetail({ id, section = 'docs' }: { id: string; section?
                     <PortalButton
                         variant="destructive"
                         onClick={() => {
-                            setLibraries(old => old.filter(item => item.id !== id))
-                            router.push('/knowledge')
+                            void (async () => {
+                                try {
+                                    await knowledgeService.delete(id)
+                                    setLibraries(old => old.filter(item => item.id !== id))
+                                    router.push('/knowledge')
+                                } catch (error) {
+                                    setNotice(error instanceof Error ? error.message : '删除知识库失败')
+                                }
+                            })()
                         }}
                     >
                         确认删除

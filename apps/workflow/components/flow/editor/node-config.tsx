@@ -6,7 +6,7 @@ import type { ReactNode } from 'react'
 
 import { ICON_MAP } from '@/components/flow/icon-map'
 import { PortalButton } from '@/components/shared'
-import { workflowModels } from '@/mocks/workflow'
+import { workflowModels } from '@/lib/workflow-presets'
 import type { FlowNode, NodeConfig, NodeKind } from '@/types/workflow'
 
 const fieldClass = 'mb-[18px] flex flex-col gap-2 text-[10px] font-[550] text-[#63687d]'
@@ -15,7 +15,7 @@ const controlClass =
 const helpClass = 'block text-[9px] leading-[1.8] font-normal text-[#a2a6b9]'
 const iconButtonClass =
     'grid size-[25px] shrink-0 place-items-center rounded-[5px] border-0 bg-transparent text-[#a5a7b7] hover:bg-[#f3f1fd] hover:text-[#6658bd]'
-const checkboxClass = 'flex items-center gap-[6px] text-[10px] text-[#82879d]'
+const checkboxClass = 'flex h-9 shrink-0 items-center gap-[6px] text-[10px] text-[#82879d]'
 const nodeIconColors: Record<NodeKind, string> = {
     start: 'bg-[#e9f7ef] text-[#53a383]',
     model: 'bg-[#efebff] text-[#7b61d6]',
@@ -132,9 +132,6 @@ export function NodeConfigPanel({
                     <X size={17} />
                 </button>
             </div>
-            <p className="m-0 border-b border-[#edeef5] bg-[#fbfbfe] px-[18px] py-3 text-[10px] leading-[1.8] text-[#9599ac]">
-                配置当前节点。修改实时应用到画布，点击顶部保存后存入当前浏览器。
-            </p>
             <div className="min-h-0 flex-1 overflow-y-auto px-[18px] py-[19px]">
                 <TextField label="节点名称" value={node.data.label} onChange={label => onUpdate(label, config)} />
                 {kind === 'start' && (
@@ -170,7 +167,7 @@ export function NodeConfigPanel({
                                         update({ inputs: config.inputs?.map(item => (item.id === input.id ? { ...item, name } : item)) })
                                     }
                                 />
-                                <div className="flex items-center gap-[10px] [&>label:first-child]:m-0 [&>label:first-child]:flex-1">
+                                <div className="flex items-end gap-[10px] [&>label:first-child]:m-0 [&>label:first-child]:flex-1">
                                     <ConfigSelect
                                         label="类型"
                                         value={input.type}
@@ -199,7 +196,7 @@ export function NodeConfigPanel({
                                         必填
                                     </label>
                                     <button
-                                        className={iconButtonClass}
+                                        className={`${iconButtonClass} h-9 w-[25px]`}
                                         aria-label={`删除参数${input.name}`}
                                         onClick={() => update({ inputs: config.inputs?.filter(item => item.id !== input.id) })}
                                     >

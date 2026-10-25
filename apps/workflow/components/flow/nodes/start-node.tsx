@@ -36,6 +36,7 @@ export const WorkflowNode = memo(function WorkflowNode({ id, data, selected, typ
           : 'border-[#dedfea] shadow-[0_8px_25px_#34365b0d] hover:border-[#b7acdf]'
     return (
         <div className={`w-[228px] rounded-xl border bg-white p-[14px] transition-[border-color,box-shadow] duration-150 ${stateClass}`}>
+            3333
             <div className="flex items-center gap-[9px]">
                 <span className={`grid size-[27px] shrink-0 place-items-center rounded-[7px] ${nodeIconColors[kind]}`}>
                     <Icon size={16} />

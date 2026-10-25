@@ -10,8 +10,7 @@ import { type ComponentProps, type ReactNode, useEffect, useRef, useState } from
 
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
-import { initialProfile } from '@/mocks/session'
-import { readMockStorage, writeMockStorage } from '@/mocks/storage'
+import { authService, type Profile } from '@/lib/services/auth-service'
 
 export const portalMenuClass =
     'portal-menu z-[60] min-w-[130px] rounded-[9px] border border-[var(--line)] bg-white p-[5px] shadow-[var(--shadow)] [&_[role=menuitem]]:cursor-pointer [&_[role=menuitem]]:rounded-[5px] [&_[role=menuitem]]:px-3 [&_[role=menuitem]]:py-[9px] [&_[role=menuitem]]:text-[11px] [&_[role=menuitem]]:outline-none [&_[role=menuitem]:focus]:bg-[var(--orange-soft)]'
@@ -35,26 +34,20 @@ export const colorClasses: Record<string, string> = {
     green: 'bg-[#e4f7ef] text-[#3f9e7c]',
     amber: 'bg-[#fff1d7] text-[#c1872b]',
 }
-const brandMarkClass =
-    'grid size-8 shrink-0 place-items-center rounded-[10px] bg-[linear-gradient(145deg,#7b70f4,#5849d9)] text-white shadow-[0_6px_15px_rgba(101,88,232,0.2)]'
-
-export function PawPrint({ size = 23 }: { size?: number; fill?: string }) {
-    return (
-        <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <ellipse cx="12" cy="15.5" rx="5.2" ry="4.5" />
-            <ellipse cx="5.7" cy="11" rx="2.1" ry="2.8" transform="rotate(-28 5.7 11)" />
-            <ellipse cx="9.3" cy="6.7" rx="2.1" ry="2.8" transform="rotate(-8 9.3 6.7)" />
-            <ellipse cx="14.7" cy="6.7" rx="2.1" ry="2.8" transform="rotate(8 14.7 6.7)" />
-            <ellipse cx="18.3" cy="11" rx="2.1" ry="2.8" transform="rotate(28 18.3 11)" />
-        </svg>
-    )
-}
+export const brandLogoClass = 'size-8 shrink-0 rounded-[10px] shadow-[0_6px_15px_rgba(101,88,232,0.2)]'
 
 export function useLocalData<T>(key: string, initial: T) {
     const [value, setValue] = useState(initial)
     const current = useRef(initial)
     useEffect(() => {
-        current.current = readMockStorage(key, initial)
+        let stored = initial
+        try {
+            const raw = window.localStorage.getItem(key)
+            if (raw) stored = JSON.parse(raw) as T
+        } catch {
+            stored = initial
+        }
+        current.current = stored
         setValue(current.current)
         // Defaults are only used when the storage key changes.
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -63,7 +56,11 @@ export function useLocalData<T>(key: string, initial: T) {
         const result = typeof next === 'function' ? (next as (old: T) => T)(current.current) : next
         current.current = result
         setValue(result)
-        writeMockStorage(key, result)
+        try {
+            window.localStorage.setItem(key, JSON.stringify(result))
+        } catch {
+            // Browser storage can be unavailable (quota or privacy mode).
+        }
     }
     return [value, update] as const
 }
@@ -159,7 +156,19 @@ export function Hero({
 export function PortalShell({ children }: { children: ReactNode }) {
     const path = usePathname()
     const [message, setMessage] = useState('')
-    const [profile] = useLocalData('miaomiao.profile.v1', initialProfile)
+    const [profile, setProfile] = useState<Profile | null>(null)
+
+    useEffect(() => {
+        authService
+            .me()
+            .then(result => setProfile(result.user))
+            .catch(() => setProfile(null))
+    }, [])
+
+    async function logout() {
+        await authService.logout().catch(() => undefined)
+        window.location.href = '/login'
+    }
     return (
         <div className="portal app-shell text-[var(--ink)]">
             <header className="sidebar fixed inset-x-0 top-0 z-10 flex h-[54px] items-center border-b border-[var(--line)] bg-white/96 px-6 shadow-[0_4px_20px_rgba(40,43,78,0.04)] max-[760px]:px-3">
@@ -167,9 +176,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
                     className="brand flex w-[184px] items-center gap-[9px] text-[var(--ink)] no-underline max-[760px]:mr-4 max-[760px]:w-auto"
                     href="/"
                 >
-                    <span className={brandMarkClass}>
-                        <PawPrint size={23} fill="currentColor" />
-                    </span>
+                    <img alt="" className={brandLogoClass} height={32} src="/logo.svg" width={32} />
                     <strong className="text-[15px] tracking-[-0.4px] max-[760px]:hidden">喵喵AI引擎</strong>
                 </Link>
                 <nav className="side-nav flex gap-1" aria-label="主导航">
@@ -218,8 +225,8 @@ export function PortalShell({ children }: { children: ReactNode }) {
                     </div>
                     <Menu.Root>
                         <Menu.Trigger className="workspace-switcher flex cursor-pointer list-none items-center gap-2 border-0 bg-transparent text-[var(--ink)]">
-                            <span className={avatarClass}>{profile.name.slice(0, 1)}</span>
-                            <strong className="text-[11px] max-[760px]:hidden">{profile.name}</strong>
+                            <span className={avatarClass}>{profile?.name?.slice(0, 1) ?? '未'}</span>
+                            <strong className="text-[11px] max-[760px]:hidden">{profile?.name ?? '未登录'}</strong>
                             <ChevronDown size={14} />
                         </Menu.Trigger>
                         <Menu.Portal>
@@ -231,18 +238,16 @@ export function PortalShell({ children }: { children: ReactNode }) {
                             >
                                 <div className="mb-[5px] flex flex-col gap-[5px] border-b border-[var(--line)] px-3 pb-[14px] pt-2.5">
                                     <strong className="text-[13px] font-semibold leading-normal [overflow-wrap:anywhere]">
-                                        {profile.name}
+                                        {profile?.name}
                                     </strong>
                                     <small className="text-[11px] leading-normal text-[#9296a8] [overflow-wrap:anywhere]">
-                                        {profile.email}
+                                        {profile?.email}
                                     </small>
                                 </div>
                                 <Menu.Item onSelect={() => setMessage('本地演示账号，无远程账户设置。可退出后使用其他名字重新体验。')}>
                                     账号设置
                                 </Menu.Item>
-                                <Menu.Item asChild>
-                                    <Link href="/login">退出演示 / 登录</Link>
-                                </Menu.Item>
+                                <Menu.Item onSelect={() => void logout()}>退出登录</Menu.Item>
                             </Menu.Content>
                         </Menu.Portal>
                     </Menu.Root>

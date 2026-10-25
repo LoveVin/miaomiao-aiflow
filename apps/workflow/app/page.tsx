@@ -5,7 +5,7 @@ import * as Tabs from '@radix-ui/react-tabs'
 import { ChevronRight, Clock, Grid2X2, List, MoreHorizontal, Plus } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 import {
     colorClasses,
@@ -21,14 +21,24 @@ import {
     SearchField,
     textAreaClass,
     textFieldClass,
-    useLocalData,
 } from '@/components/shared'
 import { appIconOptions, IconPicker, RecordIcon } from '@/components/shared/icon-picker'
-import { initialApps } from '@/mocks/apps'
+import { type AppListItem, appService } from '@/lib/services/app-service'
+
+function formatTime(value: string) {
+    const minutes = (Date.now() - new Date(value).getTime()) / 60000
+    if (minutes < 1) return '刚刚'
+    if (minutes < 60) return `${Math.floor(minutes)} 分钟前`
+    if (minutes < 1440) return `${Math.floor(minutes / 60)} 小时前`
+    if (minutes < 43200) return `${Math.floor(minutes / 1440)} 天前`
+    return new Date(value).toLocaleDateString('zh-CN')
+}
 
 export default function StudioPage() {
     const router = useRouter()
-    const [apps, setApps] = useLocalData('miaomiao.apps.v1', initialApps)
+    const [apps, setApps] = useState<AppListItem[]>([])
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState('')
     const [view, setView] = useState('grid')
     const [tab, setTab] = useState('all')
     const [search, setSearch] = useState('')
@@ -38,7 +48,25 @@ export default function StudioPage() {
     const [name, setName] = useState('')
     const [description, setDescription] = useState('')
     const [selectedIcon, setSelectedIcon] = useState(appIconOptions[0])
-    const visible = apps.filter(app => (tab === 'all' || app.owner === tab) && `${app.name}${app.desc}`.includes(search))
+    const visible = apps.filter(app => (tab === 'all' || tab === 'mine') && `${app.name}${app.desc}`.includes(search))
+
+    const loadApps = useCallback(async () => {
+        setLoading(true)
+        setError('')
+        try {
+            const result = await appService.getList({ search })
+            setApps(result.items)
+        } catch (loadError) {
+            setError(loadError instanceof Error ? loadError.message : '加载应用失败')
+        } finally {
+            setLoading(false)
+        }
+    }, [search])
+
+    useEffect(() => {
+        const timer = window.setTimeout(() => void loadApps(), 200)
+        return () => window.clearTimeout(timer)
+    }, [loadApps])
     function openCreate() {
         setEditing(null)
         setName('')
@@ -46,29 +74,31 @@ export default function StudioPage() {
         setSelectedIcon(appIconOptions[0])
         setModal(true)
     }
-    function submit(event: React.FormEvent) {
+    async function submit(event: React.FormEvent) {
         event.preventDefault()
         if (!name.trim()) return
-        if (editing) {
-            setApps(old => old.map(app => (app.id === editing ? { ...app, name: name.trim(), desc: description, time: '刚刚' } : app)))
-            setModal(false)
-            return
-        }
-        const id = crypto.randomUUID()
-        setApps(old => [
-            ...old,
-            {
-                id,
+        try {
+            if (editing) {
+                const updated = await appService.update(editing, {
+                    name: name.trim(),
+                    description,
+                    icon: selectedIcon.icon,
+                    iconColor: selectedIcon.color,
+                })
+                setApps(old => old.map(app => (app.id === editing ? { ...updated, time: formatTime(updated.updatedAt) } : app)))
+                setModal(false)
+                return
+            }
+            const created = await appService.create({
                 name: name.trim(),
-                desc: description,
+                description,
                 icon: selectedIcon.icon,
-                color: selectedIcon.color,
-                status: '草稿',
-                time: '刚刚',
-                owner: 'mine',
-            },
-        ])
-        router.push(`/app/${id}/workflow`)
+                iconColor: selectedIcon.color,
+            })
+            router.push(`/app/${created.id}/workflow`)
+        } catch (submitError) {
+            setError(submitError instanceof Error ? submitError.message : '保存应用失败')
+        }
     }
     return (
         <PortalShell>
@@ -79,6 +109,7 @@ export default function StudioPage() {
                 </PortalButton>
             </Hero>
             <section>
+                {(loading || error) && <p className="mb-4 text-[10px] text-[#85899a]">{loading ? '加载中…' : error}</p>}
                 <div className="mb-5 flex items-center justify-between gap-4 border-b border-[var(--line)] max-[760px]:flex-wrap">
                     <Tabs.Root value={tab} onValueChange={setTab}>
                         <Tabs.List className={portalTabsClass} aria-label="应用范围">
@@ -149,25 +180,34 @@ export default function StudioPage() {
                                                     setEditing(app.id)
                                                     setName(app.name)
                                                     setDescription(app.desc)
+                                                    setSelectedIcon(
+                                                        appIconOptions.find(
+                                                            option => option.icon === app.icon && option.color === app.color
+                                                        ) ??
+                                                            appIconOptions.find(option => option.icon === app.icon) ??
+                                                            appIconOptions[0]
+                                                    )
                                                     setModal(true)
                                                 }}
                                             >
                                                 编辑应用信息
                                             </Menu.Item>
                                             <Menu.Item
-                                                onSelect={() =>
-                                                    setApps(old => [
-                                                        ...old,
-                                                        {
-                                                            ...app,
-                                                            id: crypto.randomUUID(),
-                                                            name: `${app.name} 副本`,
-                                                            status: '草稿',
-                                                            time: '刚刚',
-                                                            owner: 'mine',
-                                                        },
-                                                    ])
-                                                }
+                                                onSelect={() => {
+                                                    void (async () => {
+                                                        try {
+                                                            await appService.create({
+                                                                name: `${app.name} 副本`,
+                                                                description: app.desc,
+                                                                icon: app.icon,
+                                                                iconColor: app.color,
+                                                            })
+                                                            await loadApps()
+                                                        } catch (copyError) {
+                                                            setError(copyError instanceof Error ? copyError.message : '复制应用失败')
+                                                        }
+                                                    })()
+                                                }}
                                             >
                                                 复制应用
                                             </Menu.Item>
@@ -177,12 +217,12 @@ export default function StudioPage() {
                                 </Menu.Root>
                             </div>
                             <Link
-                                className="mb-[7px] mt-[15px] block text-xs text-inherit no-underline after:absolute after:inset-0 after:content-['']"
+                                className="mb-[7px] mt-[15px] block text-xs font-bold text-inherit no-underline after:absolute after:inset-0 after:content-['']"
                                 href={`/app/${app.id}/workflow`}
                             >
                                 {app.name}
                             </Link>
-                            <p className="m-0 min-h-[31px] text-[10px] leading-[1.55] text-[#918e96]">{app.desc}</p>
+                            <p className="m-0 min-h-[31px] text-[10px] leading-[1.55] text-[#918e96]">{app.desc || '暂无描述'}</p>
                             <div className="mt-[14px] flex justify-between border-t border-[#f0eff2] pt-[11px] text-[9px] text-[#aaa7af] [&>span]:flex [&>span]:items-center [&>span]:gap-1">
                                 <span className={app.status === '已发布' ? 'text-[#579c80]' : ''}>
                                     <i
@@ -192,7 +232,7 @@ export default function StudioPage() {
                                 </span>
                                 <span>
                                     <Clock size={13} />
-                                    {app.time}
+                                    {formatTime(app.updatedAt)}
                                 </span>
                             </div>
                         </article>
@@ -207,15 +247,13 @@ export default function StudioPage() {
                 description={editing ? '给新应用取个名字，稍后可以随时修改' : undefined}
             >
                 <form onSubmit={submit}>
-                    {!editing && (
-                        <IconPicker
-                            label="应用图标"
-                            options={appIconOptions}
-                            value={selectedIcon}
-                            onChange={setSelectedIcon}
-                            className="mb-[15px]"
-                        />
-                    )}
+                    <IconPicker
+                        label="应用图标"
+                        options={appIconOptions}
+                        value={selectedIcon}
+                        onChange={setSelectedIcon}
+                        className="mb-[15px]"
+                    />
                     <label className={fieldLabelClass} htmlFor="app-name">
                         应用名称
                     </label>
@@ -261,8 +299,15 @@ export default function StudioPage() {
                     <PortalButton
                         variant="destructive"
                         onClick={() => {
-                            setApps(old => old.filter(app => app.id !== deleting))
-                            setDeleting(null)
+                            void (async () => {
+                                try {
+                                    if (deleting) await appService.delete(deleting)
+                                    await loadApps()
+                                    setDeleting(null)
+                                } catch (deleteError) {
+                                    setError(deleteError instanceof Error ? deleteError.message : '删除应用失败')
+                                }
+                            })()
                         }}
                     >
                         确认删除

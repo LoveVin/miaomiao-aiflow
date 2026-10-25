@@ -20,21 +20,21 @@ services:
                 max-file: '3'
 
     # Qdrant 向量数据库
-    # miaomiao-aiflow-qdrant:
-    #     image: qdrant/qdrant:latest
-    #     container_name: miaomiao-aiflow-qdrant
-    #     ports:
-    #         - '6333:6333' # REST API
-    #         - '6334:6334' # gRPC
-    #     volumes:
-    #         - ./qdrant_storage:/qdrant/storage
-    #     logging:
-    #         driver: 'json-file'
-    #         options:
-    #             max-size: '100m'
-    #             max-file: '3'
+    miaomiao-aiflow-qdrant:
+        image: qdrant/qdrant:latest
+        container_name: miaomiao-aiflow-qdrant
+        ports:
+            - '6333:6333' # REST API
+            - '6334:6334' # gRPC
+        volumes:
+            - ./qdrant_storage:/qdrant/storage
+        logging:
+            driver: 'json-file'
+            options:
+                max-size: '100m'
+                max-file: '3'
 
-# networks:
-#     default:
-#         name: miaomiao-aiflow-network
-#         driver: bridge
+networks:
+    default:
+        name: miaomiao-aiflow-network
+        driver: bridge

@@ -9,7 +9,7 @@
         "build": "turbo build",
         "dev": "turbo dev",
         "docker:start": "docker compose -f docker/docker-compose.yml -p miaomiao-aiflow up -d",
-        "docker:top": "docker compose -f docker/docker-compose.yml -p miaomiao-aiflow down",
+        "docker:stop": "docker compose -f docker/docker-compose.yml -p miaomiao-aiflow down",
         "clean": "run-s clean:build clean:caches",
         "clean:build": "pnpm --filter @miaomiao/* clean",
         "clean:caches": " rimraf .turbo/cache **/*/.turbo",

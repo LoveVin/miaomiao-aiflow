@@ -11,6 +11,7 @@ import {
     GraduationCap,
     Layers,
     PanelsTopLeft,
+    PawPrint,
     Plug,
     Search,
     Sparkles,
@@ -18,7 +19,7 @@ import {
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 
-import { colorClasses, fieldLabelClass, PawPrint } from '@/components/shared'
+import { colorClasses, fieldLabelClass } from '@/components/shared'
 
 const icons = {
     spark: Sparkles,
