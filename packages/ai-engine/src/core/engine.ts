@@ -7,7 +7,7 @@ import {
     NodeExecutionResult,
     ValidationResult,
     WorkflowDefinition,
-    WorkflowEngineConfig,
+    type WorkflowEngineConfig,
     WorkflowInput,
     WorkflowNode,
     WorkflowResult,
@@ -21,7 +21,8 @@ import { GraphBuilder } from './graph-builder'
  */
 export class WorkflowEngine implements IWorkflowEngine {
     private registry: NodeRegistry
-    private config: Required<WorkflowEngineConfig>
+    private config: Required<Pick<WorkflowEngineConfig, 'ollamaBaseUrl' | 'defaultTimeout' | 'verbose'>> &
+        Pick<WorkflowEngineConfig, 'knowledgeRetrievalProvider'>
     private workflowValidator: DefaultWorkflowValidator
 
     constructor(config: WorkflowEngineConfig = {}) {
@@ -30,7 +31,9 @@ export class WorkflowEngine implements IWorkflowEngine {
             defaultTimeout: config.defaultTimeout ?? 30000,
             verbose: config.verbose ?? false,
         }
-        this.registry = createDefaultNodeRegistry()
+        this.registry = createDefaultNodeRegistry({
+            knowledgeRetrievalProvider: config.knowledgeRetrievalProvider,
+        })
         this.workflowValidator = createDefaultWorkflowValidator()
     }
 
@@ -75,7 +78,12 @@ export class WorkflowEngine implements IWorkflowEngine {
             let finalOutputs: Record<string, unknown> = {}
             const executedNodes = new Set<string>()
 
-            for (const node of executionOrder) {
+            let executionIndex = 0
+
+            while (executionIndex < executionOrder.length) {
+                const node = executionOrder[executionIndex]
+                executionIndex += 1
+
                 // 跳过已执行的节点
                 if (executedNodes.has(node.id)) {
                     continue
@@ -110,6 +118,7 @@ export class WorkflowEngine implements IWorkflowEngine {
                     graphBuilder.selectBranch(node.id, result.matchedBranch)
                     // 重新获取执行顺序，排除未选中分支
                     executionOrder = graphBuilder.getExecutionOrder()
+                    executionIndex = 0
                     logger.debug('Branch selected, execution order updated', {
                         selectedBranch: result.matchedBranch,
                         newOrder: executionOrder.map(n => `${n.id}(${n.type})`),

@@ -289,7 +289,10 @@ function RichTextEditor({
         editable: !disabled,
         onUpdate: ({ editor: currentEditor }) => onChange(contentToText(currentEditor.getJSON())),
         editorProps: {
-            attributes: { class: 'outline-none' },
+            attributes: {
+                class: 'h-full min-h-full outline-none focus:outline-none focus-visible:outline-none',
+                style: 'display: flex; flex-direction: column; min-height: 100%; outline: none; border: 0; box-shadow: none;',
+            },
             handleKeyDown: singleLine
                 ? (_view, event) => {
                       if (event.key === 'Enter') return true
@@ -299,16 +302,16 @@ function RichTextEditor({
         },
         immediatelyRender: false,
     })
-    const containerStyle = singleLine ? { height: '36px' } : { minHeight }
+    const containerStyle = singleLine ? { height: '36px' } : { height: minHeight }
     const editorClassName = singleLine
-        ? 'flex h-full items-center px-[10px] text-[11px] [&_.ProseMirror]:flex-1 [&_.ProseMirror]:overflow-x-auto [&_.ProseMirror]:overflow-y-hidden [&_.ProseMirror]:whitespace-nowrap [&_.ProseMirror]:outline-none'
-        : 'px-[10px] py-2 text-[11px] [&_.ProseMirror]:min-h-[48px] [&_.ProseMirror]:whitespace-pre-wrap [&_.ProseMirror]:break-all [&_.ProseMirror]:outline-none [&_.ProseMirror]:overflow-auto'
+        ? 'flex h-full items-center px-[10px] text-[11px] [&_.ProseMirror]:h-full [&_.ProseMirror]:overflow-x-auto [&_.ProseMirror]:overflow-y-hidden [&_.ProseMirror]:whitespace-nowrap [&_.ProseMirror]:outline-none'
+        : 'flex h-full min-h-0 flex-1 flex-col px-[10px] py-2 text-[11px] [&_.ProseMirror]:h-full [&_.ProseMirror]:whitespace-pre-wrap [&_.ProseMirror]:break-all [&_.ProseMirror]:outline-none [&_.ProseMirror]:overflow-auto'
 
     return (
         <div className={cn('relative', className)}>
             <div
                 className={cn(
-                    'overflow-hidden bg-white transition-[border-color,box-shadow] focus-within:border-[#a293eb] focus-within:shadow-[0_0_0_3px_#f2efff]',
+                    'flex flex-col overflow-hidden bg-white transition-[border-color,box-shadow] focus-within:border-[#a293eb] focus-within:shadow-[0_0_0_3px_#f2efff]',
                     hideBorder ? 'rounded-none border-0' : 'rounded-[7px] border border-[#e0e3ee]'
                 )}
                 style={containerStyle}

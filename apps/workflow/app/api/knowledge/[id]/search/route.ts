@@ -9,6 +9,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         const { id } = await params
         const query = request.nextUrl.searchParams.get('query')?.trim() ?? ''
         if (!query) return apiSuccess({ results: [] })
+        const mode = request.nextUrl.searchParams.get('mode')?.toUpperCase() || 'VECTOR'
+        const topK = Math.min(20, Math.max(1, Number(request.nextUrl.searchParams.get('topK')) || 5))
+        const threshold = Math.min(1, Math.max(0, Number(request.nextUrl.searchParams.get('threshold') ?? 0)))
+        const startedAt = performance.now()
         const knowledgeBase = await prisma.knowledgeBase.findFirst({
             where: { id, userId: await getAuthenticatedUser() },
             include: { documents: true },
@@ -23,21 +27,29 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                             document,
                             content,
                             index,
-                            score: content.toLowerCase().includes(query.toLowerCase()) ? 1 : 0,
+                            score: content.toLowerCase().includes(query.toLowerCase()) ? 1 : 0.1,
                         }))
-                        .filter(item => item.score > 0) ?? []
+                        .filter(item => item.score >= threshold) ?? []
             )
             .sort((left, right) => right.score - left.score)
-            .slice(0, 5)
+            .slice(0, topK)
             .map(item => ({
-                id: crypto.randomUUID(),
+                chunkId: crypto.randomUUID(),
                 documentId: item.document.id,
                 documentName: item.document.name,
                 content: item.content,
-                index: item.index,
+                chunkIndex: item.index,
                 score: item.score,
             }))
-        return apiSuccess({ results })
+        return apiSuccess({
+            query,
+            mode,
+            topK,
+            threshold,
+            duration: Math.round(performance.now() - startedAt),
+            total: results.length,
+            results,
+        })
     } catch (error) {
         return handleApiError(error)
     }

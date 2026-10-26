@@ -105,7 +105,6 @@ export function KnowledgeSettingsForm({ node, onSave, flowContext }: NodeSetting
                     onChange={query => setConfig({ ...config, query })}
                     availableOutputs={availableOutputs}
                     placeholder="输入查询内容，可使用 / 插入变量"
-                    minHeight="80px"
                 />
             </Field>
             <Field label="检索模式">

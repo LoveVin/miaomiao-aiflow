@@ -127,6 +127,11 @@ function EditorInner({ appId, appName, initialNodes, initialEdges }: FlowEditorP
         nameRef.current = name
     }, [name])
     useEffect(() => {
+        if (!message) return
+        const timer = window.setTimeout(() => setMessage(''), 2200)
+        return () => window.clearTimeout(timer)
+    }, [message])
+    useEffect(() => {
         return () => {
             if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current)
         }
@@ -168,28 +173,35 @@ function EditorInner({ appId, appName, initialNodes, initialEdges }: FlowEditorP
     const selected = nodes.find(node => node.id === selectedId)
     const startInputs = nodes.find(node => node.type === 'start')?.data.config.inputs ?? []
     const hasStartNode = nodes.some(node => node.type === 'start')
-    const save = useCallback(async (): Promise<boolean> => {
-        if (!loaded) return false
-        try {
-            const result = await workflowService.save(appId, {
-                name: nameRef.current,
-                nodes: nodesRef.current.map(({ selected: _selected, dragging: _dragging, ...node }) => node),
-                edges: edgesRef.current.map(({ selected: _selected, ...edge }) => edge),
-            })
-            setSavedAt(result.updatedAt)
-            setDirty(false)
-            return true
-        } catch (error) {
-            setMessage(error instanceof Error ? error.message : '保存失败')
-            setMessageType('error')
-            return false
-        }
-    }, [appId, loaded])
+    const save = useCallback(
+        async ({ silent = false }: { silent?: boolean } = {}): Promise<boolean> => {
+            if (!loaded) return false
+            try {
+                const result = await workflowService.save(appId, {
+                    name: nameRef.current,
+                    nodes: nodesRef.current.map(({ selected: _selected, dragging: _dragging, ...node }) => node),
+                    edges: edgesRef.current.map(({ selected: _selected, ...edge }) => edge),
+                })
+                setSavedAt(result.updatedAt)
+                setDirty(false)
+                if (!silent) {
+                    setMessage('保存成功')
+                    setMessageType('success')
+                }
+                return true
+            } catch (error) {
+                setMessage(error instanceof Error ? error.message : '保存失败')
+                setMessageType('error')
+                return false
+            }
+        },
+        [appId, loaded]
+    )
     const triggerAutoSave = useCallback(() => {
         setDirty(true)
         if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current)
         autoSaveTimerRef.current = setTimeout(() => {
-            void save()
+            void save({ silent: true })
         }, AUTO_SAVE_DELAY)
     }, [save])
     const onDeleteNode = useCallback(
@@ -253,7 +265,7 @@ function EditorInner({ appId, appName, initialNodes, initialEdges }: FlowEditorP
     )
     const publish = async () => {
         setPublishing(true)
-        if (!(await save())) {
+        if (!(await save({ silent: true }))) {
             setPublishing(false)
             return
         }
@@ -454,6 +466,7 @@ function EditorInner({ appId, appName, initialNodes, initialEdges }: FlowEditorP
                     </main>
                     {tab === 'edit' && selected && !testOpen ? (
                         <NodeConfigPanel
+                            key={selected.id}
                             node={selected}
                             onUpdate={(label, config) => {
                                 setNodes(old =>

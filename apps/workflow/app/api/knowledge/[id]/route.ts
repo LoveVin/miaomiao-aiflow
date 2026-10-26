@@ -19,6 +19,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
                 name: z.string().trim().min(1).max(60).optional(),
                 description: z.string().max(500).optional(),
                 retrievalMode: z.enum(['VECTOR', 'FULLTEXT', 'HYBRID']).optional(),
+                vectorWeight: z.number().min(0).max(1).optional(),
+                topK: z.number().int().min(1).max(20).optional(),
+                threshold: z.number().min(0).max(1).optional(),
+                chunkSize: z.number().int().min(100).max(2000).optional(),
+                chunkOverlap: z.number().int().min(0).max(500).optional(),
             })
             .safeParse(await request.json())
         if (!parsed.success) return apiError(ErrorCode.VALIDATION_ERROR, parsed.error.issues[0]?.message)

@@ -150,7 +150,6 @@ export function HttpSettingsForm({ node, onSave, flowContext }: NodeSettingsForm
                     onChange={url => setConfig({ ...config, url })}
                     placeholder="https://api.example.com/users"
                     availableOutputs={availableOutputs}
-                    minHeight="70px"
                 />
             </Field>
             <Field label="超时时间 (ms)">

@@ -1,9 +1,14 @@
 // 知识库节点
+import type { KnowledgeRetrievalProvider } from '../../types'
 import { ExecutionContext, ExecutionLogger, KnowledgeNodeConfig, NodeExecutionResult, OutputVariableSchema } from '../../types'
 import { BaseNodeExecutor } from '../base-executor'
 
 export class KnowledgeExecutor extends BaseNodeExecutor<KnowledgeNodeConfig> {
     readonly type = 'knowledge' as const
+
+    constructor(private readonly retrievalProvider?: KnowledgeRetrievalProvider) {
+        super()
+    }
 
     protected async doExecute(
         nodeId: string,
@@ -36,11 +41,30 @@ export class KnowledgeExecutor extends BaseNodeExecutor<KnowledgeNodeConfig> {
             threshold,
         })
 
-        // TODO: 接入真实的检索服务（向量存储 + 嵌入服务）
-        // 当前为占位实现，返回空结果
+        if (!this.retrievalProvider) {
+            throw new Error('Knowledge retrieval provider is not configured')
+        }
+
+        const retrievedResults = await this.retrievalProvider({
+            query: query.trim(),
+            knowledgeBaseIds,
+            mode: retrievalMode || 'vector',
+            topK: topK || 5,
+            threshold,
+        })
         const duration = Date.now() - startTime
 
-        const results: Array<Record<string, unknown>> = []
+        const results = retrievedResults.map(result => ({
+            id: result.chunkId,
+            chunkId: result.chunkId,
+            documentId: result.documentId,
+            documentName: result.metadata?.documentName ?? '',
+            knowledgeBaseId: result.knowledgeBaseId,
+            content: result.content,
+            index: result.chunkIndex,
+            score: result.score,
+            metadata: result.metadata,
+        }))
 
         let output: unknown
         if (outputFormat === 'json') {

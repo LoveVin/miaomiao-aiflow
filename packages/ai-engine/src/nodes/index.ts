@@ -19,7 +19,9 @@ import { StartExecutor } from './executors/start'
 /**
  * 创建默认注册中心，包含所有的内置节点
  */
-export function createDefaultNodeRegistry(): NodeRegistry {
+export function createDefaultNodeRegistry(config?: {
+    knowledgeRetrievalProvider?: import('../types').KnowledgeRetrievalProvider
+}): NodeRegistry {
     const registry = new NodeRegistry()
 
     // 注册内置节点执行器
@@ -28,7 +30,7 @@ export function createDefaultNodeRegistry(): NodeRegistry {
     registry.register('http', new HTTPExecutor())
     registry.register('condition', new ConditionExecutor())
     registry.register('end', new EndExecutor())
-    registry.register('knowledge', new KnowledgeExecutor())
+    registry.register('knowledge', new KnowledgeExecutor(config?.knowledgeRetrievalProvider))
 
     return registry
 }

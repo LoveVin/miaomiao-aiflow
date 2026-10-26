@@ -70,6 +70,8 @@ export interface ExecuteOptions {
 export interface WorkflowEngineConfig {
     // Ollama 服务器地址
     ollamaBaseUrl?: string
+    // 知识库检索服务，由宿主应用提供
+    knowledgeRetrievalProvider?: import('./knowledge').KnowledgeRetrievalProvider
     // 默认超时时间，毫秒
     defaultTimeout?: number
     // 是否启用详细日志

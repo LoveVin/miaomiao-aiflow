@@ -1,5 +1,6 @@
 import { createWorkflowEngine, type NodeExecutionResult, type WorkflowNode } from '@miaomiao-aiflow/ai-engine'
 
+import { prisma } from '@/lib/prisma'
 import type { FlowEdge, FlowNode, NodeTrace } from '@/types/workflow'
 
 const serialize = (value: unknown): string => {
@@ -30,11 +31,64 @@ function getNodeDetail(node: FlowNode, result: NodeExecutionResult) {
     return '已读取输入参数'
 }
 
+function tokenize(text: string) {
+    return Array.from(new Set(text.toLowerCase().match(/[\p{Script=Han}]+|[a-z0-9]+/gu) ?? []))
+}
+
+function scoreChunk(query: string, content: string) {
+    const normalizedQuery = query.toLowerCase().trim()
+    const normalizedContent = content.toLowerCase()
+    if (!normalizedQuery || !normalizedContent) return 0
+    if (normalizedContent.includes(normalizedQuery)) return 1
+
+    const queryTokens = tokenize(normalizedQuery)
+    if (!queryTokens.length) return 0
+    const contentTokens = new Set(tokenize(normalizedContent))
+    const matched = queryTokens.filter(token => [...contentTokens].some(item => item.includes(token))).length
+    return matched / queryTokens.length
+}
+
+async function retrieveKnowledge(options: { query: string; knowledgeBaseIds: string[]; topK: number; threshold?: number }) {
+    const knowledgeBases = await prisma.knowledgeBase.findMany({
+        where: { id: { in: options.knowledgeBaseIds } },
+        include: {
+            documents: {
+                select: { id: true, name: true, content: true },
+            },
+        },
+    })
+
+    return knowledgeBases
+        .flatMap(knowledgeBase =>
+            knowledgeBase.documents.flatMap(
+                document =>
+                    (document.content ?? '').match(/[\s\S]{1,500}/g)?.map((content, chunkIndex) => {
+                        const score = scoreChunk(options.query, content)
+                        return {
+                            chunkId: `${document.id}_${chunkIndex}`,
+                            content,
+                            chunkIndex,
+                            documentId: document.id,
+                            knowledgeBaseId: knowledgeBase.id,
+                            score,
+                            metadata: { documentName: document.name },
+                        }
+                    }) ?? []
+            )
+        )
+        .filter(item => item.score >= (options.threshold ?? 0))
+        .sort((left, right) => right.score - left.score)
+        .slice(0, options.topK)
+}
+
 export async function runWorkflow(nodes: FlowNode[], edges: FlowEdge[], input: Record<string, string>) {
     const startedAt = performance.now()
     const nodeById = new Map(nodes.map(node => [node.id, node]))
     const traces = new Map<string, NodeTrace>()
-    const engine = createWorkflowEngine({ ollamaBaseUrl: process.env.OLLAMA_BASE_URL })
+    const engine = createWorkflowEngine({
+        ollamaBaseUrl: process.env.OLLAMA_BASE_URL,
+        knowledgeRetrievalProvider: retrieveKnowledge,
+    })
     const result = await engine.execute(
         {
             id: 'workflow',

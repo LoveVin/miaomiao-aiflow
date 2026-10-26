@@ -169,6 +169,8 @@ export interface RetrievalResult {
     metadata?: Record<string, unknown>
 }
 
+export type KnowledgeRetrievalProvider = (options: RetrievalOptions) => Promise<RetrievalResult[]>
+
 /**
  * 检索器接口
  */

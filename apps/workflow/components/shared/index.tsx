@@ -3,7 +3,7 @@
 import './portal.css'
 
 import * as Menu from '@radix-ui/react-dropdown-menu'
-import { Bell, BookOpen, ChevronDown, CircleHelp, PanelsTopLeft, Search } from 'lucide-react'
+import { BookOpen, ChevronDown, PanelsTopLeft, Search } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { type ComponentProps, type ReactNode, useEffect, useState } from 'react'
@@ -185,23 +185,6 @@ export function PortalShell({ children }: { children: ReactNode }) {
                     })}
                 </nav>
                 <div className="side-bottom relative ml-auto flex items-center">
-                    <div className="header-utilities mr-[14px] flex gap-0.5 border-r border-[var(--line)] pr-[14px] max-[760px]:hidden">
-                        <button
-                            className="relative grid size-8 place-items-center border-0 bg-transparent text-[#88858e]"
-                            aria-label="帮助中心"
-                            onClick={() => setMessage('你可以在这里创建应用和管理知识文档。')}
-                        >
-                            <CircleHelp size={18} />
-                        </button>
-                        <button
-                            className="relative grid size-8 place-items-center border-0 bg-transparent text-[#88858e]"
-                            aria-label="消息通知"
-                            onClick={() => setMessage('暂无新消息。')}
-                        >
-                            <Bell size={18} />
-                            <i className="absolute right-[5px] top-[5px] size-[5px] rounded-full border border-white bg-[var(--orange)]" />
-                        </button>
-                    </div>
                     <Menu.Root>
                         <Menu.Trigger className="workspace-switcher flex cursor-pointer list-none items-center gap-2 border-0 bg-transparent text-[var(--ink)]">
                             <span className={avatarClass}>{profile?.name?.slice(0, 1) ?? '未'}</span>
@@ -223,7 +206,6 @@ export function PortalShell({ children }: { children: ReactNode }) {
                                         {profile?.email}
                                     </small>
                                 </div>
-                                <Menu.Item onSelect={() => setMessage('账号设置功能即将上线。')}>账号设置</Menu.Item>
                                 <Menu.Item onSelect={() => void logout()}>退出登录</Menu.Item>
                             </Menu.Content>
                         </Menu.Portal>

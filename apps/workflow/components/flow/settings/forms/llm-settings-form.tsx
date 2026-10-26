@@ -50,7 +50,6 @@ export function LLMSettingsForm({ node, onSave, flowContext }: NodeSettingsFormP
                     onChange={value => setValue('systemPrompt', value)}
                     availableOutputs={availableOutputs}
                     placeholder="设定 AI 的角色、行为规范和背景信息..."
-                    minHeight="80px"
                 />
             </Field>
             <Field label="用户提示词 (User)" required help="可引用上游变量，例如 {{product_name}}">
@@ -59,7 +58,6 @@ export function LLMSettingsForm({ node, onSave, flowContext }: NodeSettingsFormP
                     onChange={value => setValue('userPrompt', value)}
                     availableOutputs={availableOutputs}
                     placeholder="输入用户提示词..."
-                    minHeight="100px"
                 />
             </Field>
             <Field label="助手提示词 (Assistant)">
@@ -68,7 +66,6 @@ export function LLMSettingsForm({ node, onSave, flowContext }: NodeSettingsFormP
                     onChange={value => setValue('assistantPrompt', value)}
                     availableOutputs={availableOutputs}
                     placeholder="可选，用于示例对话或续写"
-                    minHeight="60px"
                 />
             </Field>
             <div className="grid grid-cols-2 gap-3">

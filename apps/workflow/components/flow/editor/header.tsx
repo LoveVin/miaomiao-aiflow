@@ -74,9 +74,10 @@ export const FlowEditorHeader = memo(function FlowEditorHeader({
                 <Tabs.List className="flex h-full gap-[26px] max-[1100px]:gap-4" aria-label="工作流视图">
                     {[
                         { id: 'edit', name: '编排' },
-                        { id: 'logs', name: '日志' },
-                        { id: 'monitor', name: '监测' },
-                        { id: 'api', name: '访问 API' },
+                        // 以下入口暂时隐藏，待功能实现后恢复。
+                        // { id: 'logs', name: '日志' },
+                        // { id: 'monitor', name: '监测' },
+                        // { id: 'api', name: '访问 API' },
                     ].map(item => (
                         <Tabs.Trigger
                             className="relative border-0 bg-transparent px-[2px] py-0 text-[12px] whitespace-nowrap text-[#9294a5] outline-none! focus-visible:outline-none! data-[state=active]:font-[650] data-[state=active]:text-[#6051cf] data-[state=active]:after:absolute data-[state=active]:after:inset-x-0 data-[state=active]:after:bottom-0 data-[state=active]:after:h-[3px] data-[state=active]:after:rounded-t data-[state=active]:after:bg-[#7664e9] data-[state=active]:after:content-['']"
@@ -97,13 +98,14 @@ export const FlowEditorHeader = memo(function FlowEditorHeader({
                         </PortalButton>
                         <TestRunHistoryButton executions={executions} onSelectExecution={onSelectExecution} onTestRun={onTestRun} />
                         <DropdownMenu.Root>
-                            <DropdownMenu.Trigger asChild>
+                            {/* 发布入口暂时隐藏，待功能完善后恢复。 */}
+                            {/* <DropdownMenu.Trigger asChild>
                                 <PortalButton primary>
                                     {isPublished ? <CheckCircle2 size={14} /> : <Globe size={14} />}
                                     {isPublished ? '已发布' : '发布'}
                                     <ChevronDown size={14} />
                                 </PortalButton>
-                            </DropdownMenu.Trigger>
+                            </DropdownMenu.Trigger> */}
                             <DropdownMenu.Portal>
                                 <DropdownMenu.Content
                                     align="end"
