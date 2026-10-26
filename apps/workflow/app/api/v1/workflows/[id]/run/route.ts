@@ -17,7 +17,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         if (!publishedApp) return apiError(ErrorCode.RESOURCE_NOT_FOUND)
         const body = (await request.json()) as { inputs?: Record<string, string> }
         const inputs = body.inputs ?? {}
-        const result = runWorkflow(publishedApp.nodes as never[], publishedApp.edges as never[], inputs)
+        const result = await runWorkflow(publishedApp.nodes as never[], publishedApp.edges as never[], inputs)
         await prisma.$transaction([
             prisma.appExecution.create({
                 data: {

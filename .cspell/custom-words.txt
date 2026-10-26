@@ -12,3 +12,4 @@ qwen
 turbopack
 mxbai
 xyflow
+aiflow

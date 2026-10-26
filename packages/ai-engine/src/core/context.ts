@@ -59,7 +59,11 @@ class DefaultExecutionContext implements ExecutionContext {
     }
 
     resolveText(text: string): string {
-        return this.variableResolver.resolveText(text, this.variables)
+        const resolvedVariables = this.variableResolver.resolveText(text, this.variables)
+        return resolvedVariables.replace(/\{\{\s*([\w]+)\s*\}\}/g, (match, name: string) => {
+            const value = this.inputs[name]
+            return value === undefined ? match : String(value)
+        })
     }
 
     getUpstreamNodes(nodeId: string): string[] {

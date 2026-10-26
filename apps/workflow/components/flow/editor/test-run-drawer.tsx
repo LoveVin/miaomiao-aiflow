@@ -1,6 +1,6 @@
 'use client'
 
-import { Play } from 'lucide-react'
+import { LoaderCircle, Play } from 'lucide-react'
 
 import { TestRunTabs } from '@/components/flow/editor/test-run-tabs'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
@@ -52,16 +52,36 @@ export function TestRunDrawer({
                         {running ? '正在执行当前工作流...' : execution ? formatDateTime(execution.time) : '填写输入参数后开始测试'}
                     </DialogDescription>
                 </div>
-                <TestRunTabs
-                    defaultTab="input"
-                    execution={execution}
-                    inputParams={inputParams}
-                    values={values}
-                    onValuesChange={onValuesChange}
-                    onRun={onRun}
-                    onReset={onReset}
-                    running={running}
-                />
+                <div className="relative flex min-h-0 flex-1 flex-col">
+                    <TestRunTabs
+                        defaultTab="input"
+                        execution={execution}
+                        inputParams={inputParams}
+                        values={values}
+                        onValuesChange={onValuesChange}
+                        onRun={onRun}
+                        onReset={onReset}
+                        running={running}
+                    />
+                    {running ? (
+                        <div
+                            aria-busy="true"
+                            aria-live="polite"
+                            className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-white px-8 text-center"
+                            role="status"
+                        >
+                            <span className="grid size-12 place-items-center rounded-full bg-[#f2efff] text-[#7664e9]">
+                                <LoaderCircle className="animate-spin" size={24} />
+                            </span>
+                            <div>
+                                <p className="m-0 text-[14px] font-[650] text-[#4d5164]">工作流正在执行</p>
+                                <p className="mt-2 mb-0 text-[12px] leading-[1.8] text-[#9a9db0]">
+                                    正在等待节点运行完成，结果、详情和追踪随后显示。
+                                </p>
+                            </div>
+                        </div>
+                    ) : null}
+                </div>
             </DialogContent>
         </Dialog>
     )

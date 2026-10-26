@@ -106,6 +106,8 @@ export interface StartNodeConfig {
 // LLM 节点配置
 export interface LLMNodeConfig {
     model: string // 模型名称
+    baseUrl?: string // Ollama 服务地址
+    think?: boolean // 是否启用思考模式
     systemPrompt?: string // 系统提示词
     userPrompt?: string // 用户提示词，支持变量
     assistantPrompt?: string // 助手提示词

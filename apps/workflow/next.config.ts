@@ -7,6 +7,7 @@ const nextConfig: NextConfig = {
     distDir: process.env.NODE_ENV === 'development' ? '.next' : '.next-production',
     devIndicators: false,
     reactCompiler: true,
+    transpilePackages: ['@miaomiao-aiflow/ai-engine'],
     turbopack: {
         root: path.resolve(__dirname, '../..'),
         rules: {

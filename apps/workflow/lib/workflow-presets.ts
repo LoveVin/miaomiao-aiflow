@@ -9,7 +9,7 @@ export const workflowNodeLibrary: { kind: NodeKind; label: string; description: 
     { kind: 'condition', label: '条件分支', description: '根据比较结果选择分支' },
 ]
 
-export const workflowModels = ['Miao-4 Turbo', 'Miao-4 Mini', 'DeepSeek V3']
+export const workflowModels = ['qwen3.5:0.8b', 'qwen3-vl:2b']
 
 export const defaultWorkflowConfigs: Record<NodeKind, NodeConfig> = {
     start: {

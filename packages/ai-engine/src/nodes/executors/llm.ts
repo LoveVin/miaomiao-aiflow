@@ -48,6 +48,8 @@ export class LLMExecutor extends BaseNodeExecutor<LLMNodeConfig> {
         // 创建 Ollama 实例
         const llm = new ChatOllama({
             model: resolvedConfig.model,
+            baseUrl: resolvedConfig.baseUrl ?? process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434',
+            think: resolvedConfig.think ?? false,
             temperature: resolvedConfig.temperature,
             numPredict: resolvedConfig.maxTokens,
         })
@@ -57,7 +59,10 @@ export class LLMExecutor extends BaseNodeExecutor<LLMNodeConfig> {
 
         const duration = Date.now() - startTime
 
-        const content = response.content as string
+        const content = typeof response.content === 'string' ? response.content : JSON.stringify(response.content)
+        if (!content.trim()) {
+            throw new Error('模型返回了空内容；请确认模型服务正常，或增加最大 Token 数后重试。')
+        }
 
         // 估算 tokens 数，简化实现
         const tokens = this.estimateTokens(content)

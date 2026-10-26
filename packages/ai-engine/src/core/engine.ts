@@ -180,7 +180,8 @@ export class WorkflowEngine implements IWorkflowEngine {
             Object.assign(nodeInputs, context.inputs)
         }
 
-        const result = await executor.execute(node.id, node.data.config || {}, context, logger)
+        const config = node.type === 'llm' ? { ...node.data.config, baseUrl: this.config.ollamaBaseUrl } : node.data.config || {}
+        const result = await executor.execute(node.id, config, context, logger)
 
         // Add inputs to result
         result.inputs = nodeInputs

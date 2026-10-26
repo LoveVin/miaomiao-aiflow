@@ -19,7 +19,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         const inputs = body.inputs ?? {}
         const nodes = workflow.nodes as never[]
         const edges = workflow.edges as never[]
-        const result = runWorkflow(nodes, edges, inputs)
+        const result = await runWorkflow(nodes, edges, inputs)
         const execution = await prisma.workflowExecution.create({
             data: {
                 executionId: crypto.randomUUID(),
