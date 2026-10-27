@@ -22,7 +22,7 @@ NODE_VERSION="${NODE_VERSION:-22}"
 # 部署使用的 Docker Compose 文件。
 COMPOSE_FILE="${COMPOSE_FILE:-docker/docker-compose.deploy.yml}"
 
-# 首次部署时用于克隆仓库（例如 git@github.com:user/miaomiao-aiflow2.git）。
+# 首次部署时用于克隆仓库（例如 git@github.com:user/miaomiao-aiflow.git）。
 SERVER_GIT_REPO="${SERVER_GIT_REPO:-}"
 
 # NVM 安装目录。CI/CD 通过 SSH 执行脚本时不一定会加载 .bashrc，因此必须显式加载。
