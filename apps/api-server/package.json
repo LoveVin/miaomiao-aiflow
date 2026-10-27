@@ -7,12 +7,12 @@
     "license": "UNLICENSED",
     "type": "module",
     "scripts": {
-        "build": "nest build",
-        "deploy": "nest deploy",
-        "start": "nest start",
-        "start:dev": "nest start --watch",
-        "start:debug": "nest start --debug --watch",
-        "start:prod": "node dist/main"
+        "build": "node ../../scripts/with-env.cjs nest build",
+        "deploy": "node ../../scripts/with-env.cjs nest deploy",
+        "start": "node ../../scripts/with-env.cjs nest start",
+        "start:dev": "node ../../scripts/with-env.cjs nest start --watch",
+        "start:debug": "node ../../scripts/with-env.cjs nest start --debug --watch",
+        "start:prod": "node ../../scripts/with-env.cjs node dist/main.js"
     },
     "dependencies": {
         "@nestjs/common": "^12.0.1",

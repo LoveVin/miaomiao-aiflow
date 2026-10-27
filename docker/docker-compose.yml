@@ -1,5 +1,3 @@
-version: '3'
-
 services:
     miaomiao-aiflow-postgresql:
         image: postgres:18
@@ -7,9 +5,9 @@ services:
         ports:
             - '5435:5432'
         environment:
-            - POSTGRES_USER=${POSTGRES_USER:?Set POSTGRES_USER in the root .env}
-            - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the root .env}
-            - POSTGRES_DB=postgres
+            POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in the root .env}
+            POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the root .env}
+            POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in the root .env}
         volumes:
             - ./postgresql_data:/var/lib/postgresql
         # 日志控制，很重要防止服务器被日志文件爆满

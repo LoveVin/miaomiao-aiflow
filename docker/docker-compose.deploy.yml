@@ -1,0 +1,44 @@
+# 生产部署 docker 配置
+# 用法（在仓库根目录执行，自动读取根目录 .env）：
+#   docker compose --env-file .env -f docker/docker-compose.deploy.yml up -d
+#
+# 设计说明：
+#   - include 引入基础设施（Postgres / Qdrant），与本地 docker-compose.yml 保持一致
+#   - 应用服务挂载整个仓库目录；构建产物（.next-production）与 node_modules 由
+#     scripts/deploy.sh 在服务器上准备好，容器内直接执行 next start
+#   - 应用容器与数据库/向量库在同一个 compose 网络内，因此生产 .env 中的
+#     DATABASE_URL 应使用服务名：postgresql://USER:PASSWORD@miaomiao-aiflow-postgresql:5432/DATABASE
+#     OLLAMA_BASE_URL 使用 http://host.docker.internal:11434（见下方 extra_hosts）
+
+include:
+    - 'docker-compose.yml'
+
+services:
+    # AIFlow Workflow（Next.js）应用
+    miaomiao-aiflow-workflow:
+        image: node:${NODE_VERSION:-22}-alpine
+        container_name: miaomiao-aiflow-workflow
+        environment:
+            - NODE_ENV=production
+            - PORT=3005
+            - HOSTNAME=0.0.0.0
+        ports:
+            - '3005:3005'
+        volumes:
+            # 挂载整个仓库（含服务器上构建好的 .next-production 与 node_modules）
+            - ../:/app/aiflow
+        working_dir: /app/aiflow/apps/workflow
+        command: 'node_modules/.bin/next start'
+        extra_hosts:
+            # 让容器内可以访问宿主机上运行的 Ollama
+            - 'host.docker.internal:host-gateway'
+        depends_on:
+            - miaomiao-aiflow-postgresql
+            - miaomiao-aiflow-qdrant
+        restart: unless-stopped
+        # 防止日志撑爆服务器磁盘
+        logging:
+            driver: 'json-file'
+            options:
+                max-size: '100m'
+                max-file: '3'

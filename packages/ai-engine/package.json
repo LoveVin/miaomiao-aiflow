@@ -10,7 +10,7 @@
     "scripts": {
         "build:watch": "tsup --watch",
         "build": "tsup --clean",
-        "example": "tsx src/example/run-workflow.ts"
+        "example": "node ../../scripts/with-env.cjs tsx src/example/run-workflow.ts"
     },
     "keywords": [],
     "author": "",

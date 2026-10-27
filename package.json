@@ -4,12 +4,16 @@
     "description": "",
     "main": "index.js",
     "packageManager": "pnpm@9.12.3",
+    "engines": {
+        "node": ">=22.21.0"
+    },
     "scripts": {
         "build:watch": "turbo build:watch",
         "build": "turbo build",
         "dev": "turbo dev",
-        "docker:start": "docker compose -f docker/docker-compose.yml -p miaomiao-aiflow up -d",
-        "docker:stop": "docker compose -f docker/docker-compose.yml -p miaomiao-aiflow down",
+        "docker:start": "docker compose --env-file .env -f docker/docker-compose.yml -p miaomiao-aiflow up -d",
+        "docker:stop": "docker compose --env-file .env -f docker/docker-compose.yml -p miaomiao-aiflow down",
+        "test:env": "node --test scripts/load-env.test.cjs",
         "clean": "run-s clean:build clean:caches",
         "clean:build": "pnpm --filter @miaomiao/* clean",
         "clean:caches": " rimraf .turbo/cache **/*/.turbo",

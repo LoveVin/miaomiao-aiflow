@@ -1,0 +1,52 @@
+name: CI
+
+on:
+    push:
+        branches:
+            - main
+    pull_request:
+        branches:
+            - main
+    workflow_dispatch:
+
+concurrency:
+    group: ci-${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    build:
+        name: Install and build
+        runs-on: ubuntu-latest
+        timeout-minutes: 20
+        # 仅用于让 Prisma config / 构建阶段通过，不连接真实数据库；真实凭据只存在于服务器 .env
+        env:
+            DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+            JWT_SECRET: ci-only-placeholder-secret
+            OLLAMA_BASE_URL: http://localhost:11434
+            NODE_ENV: production
+        steps:
+            - name: Check out code
+              uses: actions/checkout@v4
+
+            - name: Install pnpm
+              uses: pnpm/action-setup@v4
+
+            - name: Set up Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: pnpm
+
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
+
+            - name: Verify environment loading
+              run: pnpm test:env
+
+            - name: Generate Prisma clients
+              run: |
+                  pnpm --dir apps/workflow exec prisma generate --config prisma7.config.ts
+                  pnpm --dir apps/api-server exec prisma generate --config prisma7.config.ts
+
+            - name: Build workspace
+              run: pnpm build
