@@ -23,7 +23,6 @@ jobs:
             DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
             JWT_SECRET: ci-only-placeholder-secret
             OLLAMA_BASE_URL: http://localhost:11434
-            NODE_ENV: production
         steps:
             - name: Check out code
               uses: actions/checkout@v4
