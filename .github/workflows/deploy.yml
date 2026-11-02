@@ -33,11 +33,25 @@ jobs:
                   printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
                   chmod 600 ~/.ssh/deploy_key
 
+                  # 远端引导脚本：首次部署时项目目录只有 .env、没有仓库，
+                  # 先克隆仓库（保留 .env 等未跟踪文件），再执行仓库内的 deploy.sh。
                   ssh -i ~/.ssh/deploy_key \
                     -p "${SERVER_PORT:-22}" \
                     -o BatchMode=yes \
                     -o IdentitiesOnly=yes \
                     -o StrictHostKeyChecking=yes \
                     -o ServerAliveInterval=30 \
-                    "$SERVER_USER@$SERVER_HOST" \
-                    "mkdir -p '$SERVER_PROJECT_DIR' && cd '$SERVER_PROJECT_DIR' && SERVER_GIT_REPO='$SERVER_GIT_REPO' bash scripts/deploy.sh"
+                    "$SERVER_USER@$SERVER_HOST" bash -s <<REMOTE
+                  set -euo pipefail
+                  mkdir -p '$SERVER_PROJECT_DIR'
+                  cd '$SERVER_PROJECT_DIR'
+                  if [ ! -d .git ]; then
+                      echo '==> First run: bootstrap clone'
+                      TMP_DIR="\$(mktemp -d)"
+                      git clone '$SERVER_GIT_REPO' "\$TMP_DIR"
+                      # cp 归档内容（含 .git）到项目目录；.env 是未跟踪文件，不会被覆盖
+                      cp -a "\$TMP_DIR/." .
+                      rm -rf "\$TMP_DIR"
+                  fi
+                  bash scripts/deploy.sh
+                  REMOTE
