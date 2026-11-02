@@ -8,21 +8,63 @@ concurrency:
     cancel-in-progress: false
 
 jobs:
-    deploy:
-        name: Deploy to server
+    build:
+        name: Build and push image
         runs-on: ubuntu-latest
         timeout-minutes: 30
-
+        outputs:
+            image: ${{ steps.image.outputs.name }}
         steps:
-            - name: Deploy over SSH
+            - name: Check out code
+              uses: actions/checkout@v4
+
+            - name: Compute image name
+              id: image
               env:
-                  SERVER_HOST: ${{ secrets.SERVER_HOST }}
-                  SERVER_USER: ${{ secrets.SERVER_USER }}
-                  SERVER_PORT: ${{ secrets.SERVER_PORT }}
-                  SERVER_PROJECT_DIR: ${{ secrets.SERVER_PROJECT_DIR }}
-                  SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
-                  SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
-                  SERVER_GIT_REPO: ${{ secrets.SERVER_GIT_REPO }}
+                  ACR_REGISTRY: ${{ secrets.ACR_REGISTRY }}
+                  ACR_IMAGE: ${{ secrets.ACR_IMAGE }}
+              run: |
+                  echo "name=${ACR_REGISTRY}/${ACR_IMAGE}:sha-${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+
+            - name: Log in to Aliyun ACR
+              uses: docker/login-action@v3
+              with:
+                  registry: ${{ secrets.ACR_REGISTRY }}
+                  username: ${{ secrets.ACR_USERNAME }}
+                  password: ${{ secrets.ACR_PASSWORD }}
+
+            - name: Build and push image
+              uses: docker/build-push-action@v6
+              with:
+                  context: .
+                  push: true
+                  tags: |
+                      ${{ steps.image.outputs.name }}
+                      ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_IMAGE }}:latest
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max
+
+    deploy:
+        name: Deploy to server
+        needs: build
+        runs-on: ubuntu-latest
+        timeout-minutes: 20
+        env:
+            SERVER_HOST: ${{ secrets.SERVER_HOST }}
+            SERVER_USER: ${{ secrets.SERVER_USER }}
+            SERVER_PORT: ${{ secrets.SERVER_PORT }}
+            SERVER_PROJECT_DIR: ${{ secrets.SERVER_PROJECT_DIR }}
+            SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+            SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+            APP_IMAGE: ${{ needs.build.outputs.image }}
+        steps:
+            - name: Check out code
+              uses: actions/checkout@v4
+
+            - name: Set up SSH
               run: |
                   set -euo pipefail
 
@@ -33,8 +75,26 @@ jobs:
                   printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
                   chmod 600 ~/.ssh/deploy_key
 
-                  # 远端引导脚本：首次部署时项目目录只有 .env、没有仓库，
-                  # 先克隆仓库（保留 .env 等未跟踪文件），再执行仓库内的 deploy.sh。
+            - name: Sync compose files
+              run: |
+                  ssh -i ~/.ssh/deploy_key \
+                    -p "${SERVER_PORT:-22}" \
+                    -o BatchMode=yes \
+                    -o IdentitiesOnly=yes \
+                    -o StrictHostKeyChecking=yes \
+                    "$SERVER_USER@$SERVER_HOST" "mkdir -p '$SERVER_PROJECT_DIR/docker'"
+
+                  scp -i ~/.ssh/deploy_key \
+                    -P "${SERVER_PORT:-22}" \
+                    -o BatchMode=yes \
+                    -o IdentitiesOnly=yes \
+                    -o StrictHostKeyChecking=yes \
+                    docker/docker-compose.yml \
+                    docker/docker-compose.deploy.yml \
+                    "$SERVER_USER@$SERVER_HOST:$SERVER_PROJECT_DIR/docker/"
+
+            - name: Pull image, migrate and start services
+              run: |
                   ssh -i ~/.ssh/deploy_key \
                     -p "${SERVER_PORT:-22}" \
                     -o BatchMode=yes \
@@ -43,15 +103,30 @@ jobs:
                     -o ServerAliveInterval=30 \
                     "$SERVER_USER@$SERVER_HOST" bash -s <<REMOTE
                   set -euo pipefail
-                  mkdir -p '$SERVER_PROJECT_DIR'
                   cd '$SERVER_PROJECT_DIR'
-                  if [ ! -d .git ]; then
-                      echo '==> First run: bootstrap clone'
-                      TMP_DIR="\$(mktemp -d)"
-                      git clone '$SERVER_GIT_REPO' "\$TMP_DIR"
-                      # cp 归档内容（含 .git）到项目目录；.env 是未跟踪文件，不会被覆盖
-                      cp -a "\$TMP_DIR/." .
-                      rm -rf "\$TMP_DIR"
-                  fi
-                  bash scripts/deploy.sh
+                  export APP_IMAGE='$APP_IMAGE'
+                  COMPOSE="docker compose -p miaomiao-aiflow --env-file .env -f docker/docker-compose.deploy.yml"
+
+                  echo '==> Pull image: '\$APP_IMAGE
+                  \$COMPOSE pull miaomiao-aiflow-workflow
+
+                  echo '==> Run database migrations'
+                  \$COMPOSE run --rm miaomiao-aiflow-workflow \
+                      node_modules/.bin/prisma migrate deploy --config prisma7.config.ts
+
+                  echo '==> Start / update services'
+                  \$COMPOSE up -d
+
+                  echo '==> Wait for health check'
+                  for i in \$(seq 1 10); do
+                      if curl -fsS --max-time 10 http://127.0.0.1:3005/login >/dev/null; then
+                          echo '==> Deploy success'
+                          exit 0
+                      fi
+                      sleep 3
+                  done
+
+                  echo '==> Health check failed' >&2
+                  \$COMPOSE logs --tail=100 >&2
+                  exit 1
                   REMOTE
