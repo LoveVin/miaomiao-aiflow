@@ -94,7 +94,7 @@ importers:
         version: 12.1.3(@nestjs/common@12.1.3(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.1.3)
       prisma:
         specifier: ^7.10.1
-        version: 7.10.1(@types/node@24.19.2)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(magicast@0.5.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@6.0.3)
+        version: 7.10.1(@types/node@24.19.2)(@types/react@19.3.0)(magicast@0.5.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@6.0.3)
       reflect-metadata:
         specifier: ^0.2.2
         version: 0.2.2
@@ -119,7 +119,7 @@ importers:
         version: 7.10.0
       '@prisma/client':
         specifier: ^7.10.1
-        version: 7.10.1(prisma@7.10.1(@types/node@24.19.2)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(magicast@0.5.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@6.0.3))(typescript@6.0.3)
+        version: 7.10.1(prisma@7.10.1(@types/node@24.19.2)(@types/react@19.3.0)(magicast@0.5.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@6.0.3))(typescript@6.0.3)
       '@types/express':
         specifier: ^5.0.0
         version: 5.0.6
@@ -158,6 +158,9 @@ importers:
       '@miaomiao-aiflow/ai-engine':
         specifier: workspace:*
         version: link:../../packages/ai-engine
+      '@miaomiao/monitor-react':
+        specifier: ^0.1.0
+        version: 0.1.0(react@19.3.0)
       '@prisma/adapter-pg':
         specifier: 7.10.1
         version: 7.10.1
@@ -1489,6 +1492,20 @@ packages:
   '@lukeed/csprng@1.1.0':
     resolution: {integrity: sha512-Z7C/xXCiGWsg0KuKsHTKJxbWhpI3Vs5GwLfOean7MGyVFGqdRgBbAjOCh6u4bbjPc/8MJ2pZmK/0DLdCbivLDA==}
     engines: {node: '>=8'}
+
+  '@miaomiao/monitor-react@0.1.0':
+    resolution: {integrity: sha512-Qf5wtb2NIx6lfv7E9qCKoeKGKf7lSF/bjsFsxt2LFnD0F017FU0avjwDLfutzqS0HXctoXzOHlgU2LsAgSxSUQ==}
+    peerDependencies:
+      react: ^18.0.0 || ^19.0.0
+
+  '@miaomiao/monitor-sdk-browser-utils@0.1.0':
+    resolution: {integrity: sha512-t8OlLEkD7SSl1c8FXL0Zo1wprm8Y0MX2XKorNAHZtRqPHwQ8HE0r9TiGhq+CXCDyHpYZ3mme9d9/MVWCcKiWPg==}
+
+  '@miaomiao/monitor-sdk-browser@0.1.0':
+    resolution: {integrity: sha512-LsVu6WkooCs5e/G7IZ8mefWDTtHSHbQ7K7mYiLtCdTGzUEPn4u0qhBYMnb4u5IdzV90dQhagC6RvUe1E3rG21g==}
+
+  '@miaomiao/monitor-sdk-core@0.1.0':
+    resolution: {integrity: sha512-uRS4r/hDy7u6qYs+UIfsEHKr2sxeULSs7dzidECnE2ne2rkoL/2cSkecYNY4BjQGIWJlY+9+9IZOvLOScyd+Xw==}
 
   '@napi-rs/lzma-linux-x64-gnu@1.5.1':
     resolution: {integrity: sha512-oTXEIha4SsuXdTA4Iyskj0kpdx2yVXdhd75c2v3xGrHFfVMsbhTPZU/nMPL4sWKo4pBHm3aucLaqGlF696dTyQ==}
@@ -6360,6 +6377,9 @@ packages:
   wcwidth@1.0.1:
     resolution: {integrity: sha512-XHPEwS0q6TaxcvG85+8EYkbiCux2XtWG2mkc47Ng2A77BQu9+DqIOJldST4HgPkuea7dvKSj5VgX3P1d4rW8Tg==}
 
+  web-vitals@6.2.2:
+    resolution: {integrity: sha512-oto5x6dLEgrRqfcWed+pZEUb2q6ikbFmqF54CRDhI/QGbn+qxC49b4C4OkbH+kb9C3a8shpFD3SgR9kRcs80ZQ==}
+
   webidl-conversions@4.0.2:
     resolution: {integrity: sha512-YQ+BmxuTgd6UXZW3+ICGfyqRyHXVlD5GtQr5+qjiNW7bF0cqrzX500HVXPBOvgXb5YnzDd+h0zqyv61KUD7+Sg==}
 
@@ -7589,6 +7609,24 @@ snapshots:
 
   '@lukeed/csprng@1.1.0': {}
 
+  '@miaomiao/monitor-react@0.1.0(react@19.3.0)':
+    dependencies:
+      '@miaomiao/monitor-sdk-browser': 0.1.0
+      '@miaomiao/monitor-sdk-core': 0.1.0
+      react: 19.3.0
+
+  '@miaomiao/monitor-sdk-browser-utils@0.1.0':
+    dependencies:
+      '@miaomiao/monitor-sdk-core': 0.1.0
+      web-vitals: 6.2.2
+
+  '@miaomiao/monitor-sdk-browser@0.1.0':
+    dependencies:
+      '@miaomiao/monitor-sdk-browser-utils': 0.1.0
+      '@miaomiao/monitor-sdk-core': 0.1.0
+
+  '@miaomiao/monitor-sdk-core@0.1.0': {}
+
   '@napi-rs/lzma-linux-x64-gnu@1.5.1':
     optional: true
 
@@ -7770,11 +7808,11 @@ snapshots:
       prisma: 7.10.1(@types/node@20.19.43)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(magicast@0.5.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@5.9.3)
       typescript: 5.9.3
 
-  '@prisma/client@7.10.1(prisma@7.10.1(@types/node@24.19.2)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(magicast@0.5.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@6.0.3))(typescript@6.0.3)':
+  '@prisma/client@7.10.1(prisma@7.10.1(@types/node@24.19.2)(@types/react@19.3.0)(magicast@0.5.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@6.0.3))(typescript@6.0.3)':
     dependencies:
       '@prisma/client-runtime-utils': 7.10.1
     optionalDependencies:
-      prisma: 7.10.1(@types/node@24.19.2)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(magicast@0.5.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@6.0.3)
+      prisma: 7.10.1(@types/node@24.19.2)(@types/react@19.3.0)(magicast@0.5.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@6.0.3)
       typescript: 6.0.3
 
   '@prisma/config@7.10.1(magicast@0.5.5)':
@@ -11735,7 +11773,7 @@ snapshots:
       - react
       - react-dom
 
-  prisma@7.10.1(@types/node@24.19.2)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(magicast@0.5.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@6.0.3):
+  prisma@7.10.1(@types/node@24.19.2)(@types/react@19.3.0)(magicast@0.5.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@6.0.3):
     dependencies:
       '@prisma/config': 7.10.1(magicast@0.5.5)
       '@prisma/dev': 0.24.17(typescript@6.0.3)
@@ -12740,6 +12778,8 @@ snapshots:
   wcwidth@1.0.1:
     dependencies:
       defaults: 1.0.4
+
+  web-vitals@6.2.2: {}
 
   webidl-conversions@4.0.2: {}
 

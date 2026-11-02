@@ -1,7 +1,16 @@
 {
     "$schema": "https://turbo.build/schema.json",
     "globalDependencies": [".env"],
-    "globalEnv": ["DATABASE_URL", "JWT_SECRET", "POSTGRES_USER", "POSTGRES_PASSWORD", "POSTGRES_DB", "OLLAMA_BASE_URL", "PORT"],
+    "globalEnv": [
+        "DATABASE_URL",
+        "JWT_SECRET",
+        "POSTGRES_USER",
+        "POSTGRES_PASSWORD",
+        "POSTGRES_DB",
+        "OLLAMA_BASE_URL",
+        "PORT",
+        "NEXT_PUBLIC_MONITOR_DSN"
+    ],
     "tasks": {
         "build:watch": {
             "cache": false,
