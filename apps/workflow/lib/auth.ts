@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken'
-import { cookies } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 
 import { ApiError, ErrorCode } from '@/lib/api-response'
 
@@ -20,9 +20,13 @@ export function generateToken(userId: string): string {
  */
 export async function setAuthCookie(token: string): Promise<void> {
     const cookieStore = await cookies()
+    // secure 不能绑定 NODE_ENV：HTTP 直连部署时浏览器会丢弃 Secure Cookie，
+    // 导致登录后仍被跳回 /login。以实际请求协议（x-forwarded-proto）为准。
+    const headerList = await headers()
+    const proto = headerList.get('x-forwarded-proto')?.split(',')[0]?.trim()
     cookieStore.set(TOKEN_NAME, token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: proto === 'https',
         sameSite: 'lax',
         maxAge: TOKEN_MAX_AGE,
         path: '/',
