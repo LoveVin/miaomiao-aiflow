@@ -93,6 +93,7 @@ jobs:
                     -o StrictHostKeyChecking=yes \
                     docker/docker-compose.yml \
                     docker/docker-compose.deploy.yml \
+                    docker/Caddyfile \
                     "$SERVER_USER@$SERVER_HOST:$SERVER_PROJECT_DIR/docker/"
 
                   scp -i ~/.ssh/deploy_key \

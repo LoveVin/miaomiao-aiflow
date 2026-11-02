@@ -26,8 +26,7 @@ services:
             - NODE_ENV=production
             - PORT=3005
             - HOSTNAME=0.0.0.0
-        ports:
-            - '3005:3005'
+        # 应用不再直接对外暴露 3005，统一由 Caddy 反代入口（:80）转发
         extra_hosts:
             # 让容器内可以访问宿主机上运行的 Ollama
             - 'host.docker.internal:host-gateway'
@@ -41,3 +40,26 @@ services:
             options:
                 max-size: '100m'
                 max-file: '3'
+
+    # Caddy 反向代理入口
+    miaomiao-aiflow-caddy:
+        image: caddy:2-alpine
+        container_name: miaomiao-aiflow-caddy
+        ports:
+            - '80:80'
+        volumes:
+            - ./Caddyfile:/etc/caddy/Caddyfile:ro
+            - caddy_data:/data
+            - caddy_config:/config
+        depends_on:
+            - miaomiao-aiflow-workflow
+        restart: unless-stopped
+        logging:
+            driver: 'json-file'
+            options:
+                max-size: '100m'
+                max-file: '3'
+
+volumes:
+    caddy_data:
+    caddy_config:
