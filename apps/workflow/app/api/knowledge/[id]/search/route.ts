@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 
 import { apiError, apiSuccess, ErrorCode, handleApiError } from '@/lib/api-response'
 import { getAuthenticatedUser } from '@/lib/auth'
+import { scoreChunk, sliceKnowledgeText } from '@/lib/knowledge/text-chunking'
 import { prisma } from '@/lib/prisma'
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -21,13 +22,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         const results = knowledgeBase.documents
             .flatMap(
                 document =>
-                    (document.content ?? '')
-                        .match(/[\s\S]{1,500}/g)
-                        ?.map((content, index) => ({
+                    sliceKnowledgeText(document.content ?? '')
+                        .map((content, index) => ({
                             document,
                             content,
                             index,
-                            score: content.toLowerCase().includes(query.toLowerCase()) ? 1 : 0.1,
+                            score: scoreChunk(content, query),
                         }))
                         .filter(item => item.score >= threshold) ?? []
             )

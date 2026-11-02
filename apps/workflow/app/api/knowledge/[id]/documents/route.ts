@@ -2,9 +2,8 @@ import { NextRequest } from 'next/server'
 
 import { apiError, apiSuccess, ErrorCode, handleApiError } from '@/lib/api-response'
 import { getAuthenticatedUser } from '@/lib/auth'
+import { sliceKnowledgeText } from '@/lib/knowledge/text-chunking'
 import { prisma } from '@/lib/prisma'
-
-const sliceText = (text: string) => text.match(/[\s\S]{1,500}/g) ?? []
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
@@ -45,7 +44,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
                     mimeType: file.type || 'application/octet-stream',
                     size: file.size,
                     content,
-                    chunkCount: content ? sliceText(content).length : 0,
+                    chunkCount: content ? sliceKnowledgeText(content).length : 0,
                     status: content ? 'COMPLETED' : 'PENDING',
                     errorMessage: '',
                     processedAt: content ? new Date() : null,
