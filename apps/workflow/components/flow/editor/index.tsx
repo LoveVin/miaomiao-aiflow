@@ -17,7 +17,7 @@ import {
     ReactFlowProvider,
     useReactFlow,
 } from '@xyflow/react'
-import { Check, CircleAlert, MousePointer2, X } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, CircleAlert, MousePointer2, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { ApplicationPages } from '@/components/flow/editor/application-pages'
@@ -105,6 +105,7 @@ function EditorInner({ appId, appName, initialNodes, initialEdges }: FlowEditorP
     const [testOpen, setTestOpen] = useState(false)
     const [running, setRunning] = useState(false)
     const [search, setSearch] = useState('')
+    const [nodePanelOpen, setNodePanelOpen] = useState(true)
     const [message, setMessage] = useState('')
     const [messageType, setMessageType] = useState<'success' | 'error'>('success')
     const [input, setInput] = useState<Record<string, string>>({})
@@ -354,7 +355,9 @@ function EditorInner({ appId, appName, initialNodes, initialEdges }: FlowEditorP
             <FlowEditorContext.Provider value={context}>
                 {tab !== 'edit' && <ApplicationPages tab={tab} executions={executions} appId={appId} appName={name} />}
                 <div className={`min-h-0 flex-1 ${tab !== 'edit' ? 'hidden' : 'flex'}`}>
-                    <aside className="flex w-[216px] shrink-0 flex-col overflow-y-auto border-r border-[#e7e9f1] bg-white px-[13px] py-[22px] max-[1100px]:w-[190px] max-[800px]:w-[156px] max-[800px]:px-2 max-[800px]:py-[18px] [&_.portal-search]:mb-[14px] [&_.portal-search]:h-[34px] [&_.portal-search]:w-full [&_.portal-search]:border [&_.portal-search]:border-transparent [&_.portal-search]:bg-[#f6f7fb]">
+                    <aside
+                        className={`flex w-[216px] shrink-0 flex-col overflow-y-auto border-r border-[#e7e9f1] bg-white px-[13px] py-[22px] max-[1100px]:w-[190px] max-[800px]:w-[156px] max-[800px]:px-2 max-[800px]:py-[18px] [&_.portal-search]:mb-[14px] [&_.portal-search]:h-[34px] [&_.portal-search]:w-full [&_.portal-search]:border [&_.portal-search]:border-transparent [&_.portal-search]:bg-[#f6f7fb] ${nodePanelOpen ? '' : 'hidden'}`}
+                    >
                         <div className="mx-[9px] mb-[18px] flex items-center gap-2">
                             <h2 className="m-0 text-[13px] font-[650]">节点</h2>
                             <span className="rounded-[5px] bg-[#f0f1f7] px-[5px] py-px text-[10px] text-[#989bad]">{library.length}</span>
@@ -407,6 +410,25 @@ function EditorInner({ appId, appName, initialNodes, initialEdges }: FlowEditorP
                                 onAddNode(kind, screenToFlowPosition({ x: event.clientX, y: event.clientY }))
                         }}
                     >
+                        {nodePanelOpen ? (
+                            <button
+                                type="button"
+                                aria-label="收起节点面板"
+                                className="absolute top-1/2 left-0 z-10 grid size-[34px] -translate-y-1/2 place-items-center rounded-[9px] border border-[#e7e9f1] bg-white text-[#6658bd] shadow-[0_5px_18px_#34365b0a] transition-colors hover:bg-[#f7f6fe]"
+                                onClick={() => setNodePanelOpen(false)}
+                            >
+                                <ChevronLeft size={16} />
+                            </button>
+                        ) : (
+                            <button
+                                type="button"
+                                aria-label="展开节点面板"
+                                className="absolute top-1/2 left-0 z-10 grid size-[34px] -translate-y-1/2 place-items-center rounded-[9px] border border-[#e7e9f1] bg-white text-[#6658bd] shadow-[0_5px_18px_#34365b0a] transition-colors hover:bg-[#f7f6fe]"
+                                onClick={() => setNodePanelOpen(true)}
+                            >
+                                <ChevronRight size={17} />
+                            </button>
+                        )}
                         {loaded ? (
                             <ReactFlow<FlowNode, FlowEdge>
                                 nodes={nodes}
