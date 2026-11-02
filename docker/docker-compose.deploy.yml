@@ -43,12 +43,12 @@ services:
 
     # Caddy 反向代理入口
     miaomiao-aiflow-caddy:
-        image: caddy:2-alpine
+        image: caddy:2.11.7
         container_name: miaomiao-aiflow-caddy
         ports:
             - '80:80'
         volumes:
-            - ./Caddyfile:/etc/caddy/Caddyfile:ro
+            - ./caddy/Caddyfile:/etc/caddy/Caddyfile
             - caddy_data:/data
             - caddy_config:/config
         depends_on:
