@@ -100,6 +100,9 @@ echo "==> Generate Prisma clients"
 "${PNPM[@]}" --dir apps/api-server exec prisma generate --config prisma7.config.ts
 
 echo "==> Build workspace"
+# 小内存服务器（如 2GB ECS + swap）上，Next 构建会无限制扩张 Node 堆直到被 OOM killer 杀掉。
+# 限制单进程堆上限，强制及时 GC；服务器内存充足时可通过环境变量覆盖。
+export NODE_OPTIONS="${NODE_OPTIONS:-} --max-old-space-size=1024"
 "${PNPM[@]}" build
 
 echo "==> Start Docker services"
