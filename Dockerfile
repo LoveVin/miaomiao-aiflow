@@ -76,6 +76,11 @@ COPY --from=prod-deps /out/prisma7.config.ts ./prisma7.config.ts
 COPY --from=prod-deps /out/prisma ./prisma
 COPY --from=build /app/apps/workflow/.next-production ./.next-production
 COPY --from=build /app/apps/workflow/public ./public
+# Turbopack 产物内的哈希 external symlink 指向构建期 pnpm store 的相对路径，
+# 平移到 /app 后层级变化导致链接失效（vercel/next.js#87737），统一重定向到
+# 运行时 node_modules，否则接口全部 500。
+COPY scripts/fix-turbopack-external-links.sh /usr/local/bin/fix-turbopack-external-links
+RUN fix-turbopack-external-links /app
 # next start 会加载 next.config.ts，其 import '../../scripts/load-env.cjs' 指向 /scripts
 COPY --from=build /app/apps/workflow/next.config.ts ./next.config.ts
 COPY --from=prod-deps /scripts/load-env.cjs /scripts/load-env.cjs
