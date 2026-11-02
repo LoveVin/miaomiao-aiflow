@@ -1,9 +1,9 @@
 # Caddy 反向代理入口（生产部署）
-# 监听 80，反代内网中的 Next.js 应用容器（miaomiao-aiflow-workflow:3005）。
+# 监听 3005（对外入口端口），反代内网中的 Next.js 应用容器（miaomiao-aiflow-workflow:3005）。
 # reverse_proxy 会自动携带 X-Forwarded-Proto / X-Forwarded-For，
 # 应用侧据此判断请求协议（登录 Cookie 的 secure 标志依赖它）。
 # 有域名后可改为域名站点，Caddy 会自动签发 HTTPS 证书并监听 443。
-:80 {
+:3005 {
 	encode gzip zstd
 
 	reverse_proxy miaomiao-aiflow-workflow:3005
