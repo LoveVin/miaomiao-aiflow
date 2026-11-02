@@ -148,6 +148,24 @@ jobs:
                   \$COMPOSE run --rm miaomiao-aiflow-workflow \
                       node_modules/.bin/prisma migrate deploy --config prisma7.config.ts
 
+                  echo '==> Check for stale app container not owned by this compose project'
+                  # 历史遗留：早期部署可能用其它 compose 项目名/方式创建了同名容器。
+                  # 由于 compose 文件固定了 container_name，当前项目 up -d 会因名字冲突失败，
+                  # 旧容器一直占着名字不被替换，页面始终是旧版本。
+                  # 这里把不属于 miaomiao-aiflow 项目的同名容器删掉，让 up -d 能正常重建。
+                  STALE_CONTAINER="\$(docker ps -a --format '{{.Names}}\t{{.Label "com.docker.compose.project"}}' \
+                      | awk -F '\t' '\$1 == "miaomiao-aiflow-workflow" && \$2 != "miaomiao-aiflow" {print \$1}')"
+                  if [ -n "\$STALE_CONTAINER" ]; then
+                      echo "==> Removing stale container: \$STALE_CONTAINER"
+                      docker rm -f "\$STALE_CONTAINER" >/dev/null
+                  else
+                      echo '==> No stale container found'
+                  fi
+
+                  echo '==> Current app container state'
+                  docker ps -a --filter 'name=^/miaomiao-aiflow-workflow$' \
+                      --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Label "com.docker.compose.project"}}' || true
+
                   echo '==> Start / update services (force-recreate: pick up newly pulled image)'
                   # 关键：仅 docker compose up -d 在镜像 tag 未变化时（同一 commit 重跑 / latest 固定 tag）不会重建容器，
                   # 即使已经 pull 到新 digest 也会继续跑旧容器；--force-recreate 强制用新镜像重建应用容器。
@@ -162,15 +180,36 @@ jobs:
                   fi
 
                   echo '==> Wait for health check'
+                  HEALTHY=0
                   for i in \$(seq 1 10); do
                       if curl -fsS --max-time 10 http://127.0.0.1:3005/login >/dev/null; then
-                          echo '==> Deploy success'
-                          exit 0
+                          HEALTHY=1
+                          break
                       fi
                       sleep 3
                   done
 
-                  echo '==> Health check failed' >&2
-                  \$COMPOSE logs --tail=100 >&2
-                  exit 1
+                  if [ "\$HEALTHY" != "1" ]; then
+                      echo '==> Health check failed' >&2
+                      \$COMPOSE logs --tail=100 >&2
+                      exit 1
+                  fi
+
+                  echo '==> Deploy success'
+
+                  echo '==> Prune old app images (keep the two newest)'
+                  # 镜像 tag 为 sha-<git sha>；按创建时间倒序只保留最近两个，更早的删除，
+                  # 避免每次 CD 都 pull 新镜像导致服务器磁盘上镜像越积越多。
+                  APP_REPO="\${APP_IMAGE%%:*}"
+                  NEWEST_TWO="\$(docker image ls --format '{{.CreatedAt}}\t{{.Repository}}:{{.Tag}}' "\$APP_REPO" | grep -F ':sha-' | sort -r | head -n 2 | awk -F '\t' '{print \$2}')"
+                  for img in \$(docker image ls --format '{{.Repository}}:{{.Tag}}' "\$APP_REPO" | grep -F ':sha-'); do
+                      if ! printf '%s\n' "\$NEWEST_TWO" | grep -Fx "\$img" >/dev/null; then
+                          echo "==> Removing old image: \$img"
+                          docker rmi "\$img" >/dev/null || true
+                      fi
+                  done
+                  # 清理 pull 中断等产生的无标签悬空镜像
+                  docker image prune -f >/dev/null || true
+
+                  exit 0
                   REMOTE
