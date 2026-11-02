@@ -3,6 +3,7 @@
 import { Edit2, Plus, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { type Control, Controller, useForm, type UseFormRegister, useWatch } from 'react-hook-form'
+import { v4 as uuidV4 } from 'uuid'
 
 import { PARAM_TYPE_LABELS, PARAM_TYPE_OPTIONS } from '@/components/flow/param-types'
 import { Button } from '@/components/ui/button'
@@ -195,10 +196,8 @@ export function StartSettingsForm({ node, onSave }: NodeSettingsFormProps<{ inpu
                 onSave={param => {
                     const next =
                         editingIndex === null
-                            ? [...inputs, { ...param, id: crypto.randomUUID() }]
-                            : inputs.map((item, index) =>
-                                  index === editingIndex ? { ...param, id: item.id || crypto.randomUUID() } : item
-                              )
+                            ? [...inputs, { ...param, id: uuidV4() }]
+                            : inputs.map((item, index) => (index === editingIndex ? { ...param, id: item.id || uuidV4() } : item))
                     setInputs(next)
                 }}
             />
