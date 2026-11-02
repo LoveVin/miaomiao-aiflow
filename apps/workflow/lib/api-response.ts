@@ -96,6 +96,7 @@ export enum ErrorCode {
     // 知识库错误
     KNOWLEDGE_BASE_NOT_FOUND = 'KNOWLEDGE_BASE_NOT_FOUND',
     KNOWLEDGE_BASE_NAME_INVALID = 'KNOWLEDGE_BASE_NAME_INVALID',
+    KNOWLEDGE_BASE_IN_USE = 'KNOWLEDGE_BASE_IN_USE',
     DOCUMENT_NOT_FOUND = 'DOCUMENT_NOT_FOUND',
     DOCUMENT_UPLOAD_FAILED = 'DOCUMENT_UPLOAD_FAILED',
     DOCUMENT_PROCESSING_FAILED = 'DOCUMENT_PROCESSING_FAILED',
@@ -147,6 +148,7 @@ export const ErrorCodeHttpStatusMap: Record<ErrorCode, number> = {
 
     [ErrorCode.KNOWLEDGE_BASE_NOT_FOUND]: 404,
     [ErrorCode.KNOWLEDGE_BASE_NAME_INVALID]: 400,
+    [ErrorCode.KNOWLEDGE_BASE_IN_USE]: 400,
     [ErrorCode.DOCUMENT_NOT_FOUND]: 404,
     [ErrorCode.DOCUMENT_UPLOAD_FAILED]: 500,
     [ErrorCode.DOCUMENT_PROCESSING_FAILED]: 500,
@@ -196,6 +198,7 @@ export const ErrorCodeMessageMap: Record<ErrorCode, string> = {
 
     [ErrorCode.KNOWLEDGE_BASE_NOT_FOUND]: '知识库不存在',
     [ErrorCode.KNOWLEDGE_BASE_NAME_INVALID]: '知识库名称无效',
+    [ErrorCode.KNOWLEDGE_BASE_IN_USE]: '知识库正被工作流应用引用，无法删除',
     [ErrorCode.DOCUMENT_NOT_FOUND]: '文档不存在',
     [ErrorCode.DOCUMENT_UPLOAD_FAILED]: '文档上传失败',
     [ErrorCode.DOCUMENT_PROCESSING_FAILED]: '文档处理失败',
