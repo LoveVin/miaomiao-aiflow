@@ -13,6 +13,9 @@ ENV COREPACK_NPM_REGISTRY=${NPM_REGISTRY} \
 # corepack 按 package.json 的 packageManager 字段激活对应 pnpm 版本
 RUN corepack enable
 WORKDIR /app
+# @miaomiao 包来自私有 registry；这里保留 scoped registry 配置，
+# 避免构建期把内部包误发到公共 npm registry 导致 404。
+COPY .npmrc .npmrc
 
 # ---------- deps：安装全部依赖（构建需要 devDependencies）----------
 FROM base AS deps
