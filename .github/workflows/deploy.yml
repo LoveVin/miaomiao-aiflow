@@ -148,8 +148,18 @@ jobs:
                   \$COMPOSE run --rm miaomiao-aiflow-workflow \
                       node_modules/.bin/prisma migrate deploy --config prisma7.config.ts
 
-                  echo '==> Start / update services'
-                  \$COMPOSE up -d
+                  echo '==> Start / update services (force-recreate: pick up newly pulled image)'
+                  # 关键：仅 docker compose up -d 在镜像 tag 未变化时（同一 commit 重跑 / latest 固定 tag）不会重建容器，
+                  # 即使已经 pull 到新 digest 也会继续跑旧容器；--force-recreate 强制用新镜像重建应用容器。
+                  \$COMPOSE up -d --force-recreate miaomiao-aiflow-workflow
+
+                  echo '==> Verify running container image'
+                  RUNNING_IMAGE="\$(docker inspect --format '{{.Config.Image}}' miaomiao-aiflow-workflow)"
+                  echo "==> Running container image: \$RUNNING_IMAGE"
+                  if [ "\$RUNNING_IMAGE" != "\$APP_IMAGE" ]; then
+                      echo '==> Error: running container did not switch to the new image' >&2
+                      exit 1
+                  fi
 
                   echo '==> Wait for health check'
                   for i in \$(seq 1 10); do
