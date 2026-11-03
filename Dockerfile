@@ -33,11 +33,15 @@ RUN pnpm install --frozen-lockfile
 FROM deps AS build
 # .dockerignore 已排除 node_modules / 产物 / .env，这里拷贝完整源码
 COPY . .
+# NEXT_PUBLIC_* 变量在构建期内联进浏览器 bundle，运行时 env_file 注入无效，
+# 必须由 CD 流水线以 build-arg 传入（deploy.yml 从 GitHub Secrets 注入）。
+ARG NEXT_PUBLIC_MONITOR_DSN
 # 构建期占位环境变量（与 CI 一致，不连接真实数据库；真实凭据只在运行时注入）
 ENV DATABASE_URL=postgresql://ci:ci@localhost:5432/ci \
     JWT_SECRET=ci-only-placeholder-secret \
     OLLAMA_BASE_URL=http://localhost:11434 \
-    NODE_ENV=production
+    NODE_ENV=production \
+    NEXT_PUBLIC_MONITOR_DSN=${NEXT_PUBLIC_MONITOR_DSN}
 RUN pnpm --dir apps/workflow exec prisma generate --config prisma7.config.ts \
     && pnpm exec turbo build --filter=@miaomiao-aiflow/worflow...
 
