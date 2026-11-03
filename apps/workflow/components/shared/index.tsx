@@ -15,7 +15,7 @@ import { authService, type Profile } from '@/lib/services/auth-service'
 export const portalMenuClass =
     'portal-menu z-[60] min-w-[130px] rounded-[9px] border border-[var(--line)] bg-white p-[5px] shadow-[var(--shadow)] [&_[role=menuitem]]:cursor-pointer [&_[role=menuitem]]:rounded-[5px] [&_[role=menuitem]]:px-3 [&_[role=menuitem]]:py-[9px] [&_[role=menuitem]]:text-[11px] [&_[role=menuitem]]:outline-none [&_[role=menuitem]:focus]:bg-[var(--orange-soft)]'
 export const portalTabsClass =
-    "tabs flex gap-[29px] max-[760px]:gap-[18px] [&_button]:relative [&_button]:h-[38px] [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-[11px] [&_button]:text-[#8d8a93] [&_[data-state=active]]:font-bold [&_[data-state=active]]:text-[#29262d] [&_[data-state=active]]:after:absolute [&_[data-state=active]]:after:inset-x-0 [&_[data-state=active]]:after:-bottom-px [&_[data-state=active]]:after:h-0.5 [&_[data-state=active]]:after:bg-[var(--orange)] [&_[data-state=active]]:after:content-[''] [&_button_span]:ml-[3px] [&_button_span]:text-[#aaa7af]"
+    "tabs flex gap-[29px] max-[760px]:gap-[18px] [&_button]:relative [&_button]:h-[38px] [&_button]:border-0 [&_button]:bg-transparent [&_button]:outline-none [&_button:focus]:outline-none [&_button:focus-visible]:outline-none [&_button]:p-0 [&_button]:text-[11px] [&_button]:text-[#8d8a93] [&_[data-state=active]]:font-bold [&_[data-state=active]]:text-[#29262d] [&_[data-state=active]]:after:absolute [&_[data-state=active]]:after:inset-x-0 [&_[data-state=active]]:after:-bottom-px [&_[data-state=active]]:after:h-0.5 [&_[data-state=active]]:after:bg-[var(--orange)] [&_[data-state=active]]:after:content-[''] [&_button_span]:ml-[3px] [&_button_span]:text-[#aaa7af]"
 export const fieldLabelClass = 'mb-[7px] block text-[10px] font-[650]'
 export const textFieldClass =
     'h-10 w-full rounded-lg border border-[#dedce2] px-3 text-[11px] outline-none focus:border-[var(--orange)] focus:shadow-[0_0_0_3px_var(--orange-soft)]'
@@ -220,6 +220,26 @@ export function PortalShell({ children }: { children: ReactNode }) {
             <PortalDialog open={!!message} onOpenChange={() => setMessage('')} title="提示" description={message}>
                 <PortalButton onClick={() => setMessage('')}>知道了</PortalButton>
             </PortalDialog>
+        </div>
+    )
+}
+
+export function EmptyState({
+    image = '/empty-apps.svg',
+    title,
+    description,
+    className = '',
+}: {
+    image?: string
+    title?: string
+    description?: string
+    className?: string
+}) {
+    return (
+        <div className={`col-span-full flex min-h-[320px] flex-col items-center justify-center px-4 py-10 text-center ${className}`}>
+            <img alt="" className="w-[220px] max-w-full" src={image} />
+            {title ? <p className="mb-1 mt-4 text-xs font-semibold text-[#a2a6b9]">{title}</p> : null}
+            {description ? <p className="m-0 text-[10px] text-[#a2a6b9]">{description}</p> : null}
         </div>
     )
 }

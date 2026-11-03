@@ -10,7 +10,7 @@ import { useCallback, useEffect, useState } from 'react'
 import {
     CardSkeleton,
     colorClasses,
-    emptyStateClass,
+    EmptyState,
     fieldLabelClass,
     Hero,
     modalActionsClass,
@@ -240,7 +240,7 @@ export default function StudioPage() {
                             </div>
                         </article>
                     ))}
-                    {visible.length === 0 && <p className={emptyStateClass}>暂无匹配的应用，试试其他关键词或创建新应用。</p>}
+                    {!loading && visible.length === 0 && <EmptyState title="暂无数据" />}
                 </div>
             </section>
             <PortalDialog

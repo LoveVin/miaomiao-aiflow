@@ -9,3 +9,7 @@
         transform: translateX(100%);
     }
 }
+
+.tabs button:focus-visible {
+    outline: none;
+}
