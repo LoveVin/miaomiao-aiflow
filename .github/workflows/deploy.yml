@@ -12,6 +12,8 @@ jobs:
         name: Build and push image
         runs-on: ubuntu-latest
         timeout-minutes: 30
+        outputs:
+            digest: ${{ steps.build.outputs.digest }}
         steps:
             - name: Check out code
               uses: actions/checkout@v4
@@ -27,6 +29,7 @@ jobs:
                   password: ${{ secrets.ACR_PASSWORD }}
 
             - name: Build and push image
+              id: build
               uses: docker/build-push-action@v6
               with:
                   context: .
@@ -52,7 +55,8 @@ jobs:
             SERVER_PROJECT_DIR: ${{ secrets.SERVER_PROJECT_DIR }}
             SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
             SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
-            APP_IMAGE: ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_IMAGE }}:sha-${{ github.sha }}
+            # 使用本次构建的不可变 digest，避免同一 commit 重跑时 sha 标签被覆盖。
+            APP_IMAGE: ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_IMAGE }}@${{ needs.build.outputs.digest }}
         steps:
             - name: Check out code
               uses: actions/checkout@v4
@@ -70,21 +74,28 @@ jobs:
 
             - name: Verify image ref
               run: |
+                  set -euo pipefail
                   echo "APP_IMAGE=$APP_IMAGE"
-                  if [ -z "$APP_IMAGE" ]; then
-                      echo '::error::APP_IMAGE is empty - build job outputs did not propagate' >&2
+                  if [[ ! "$APP_IMAGE" =~ ^[^[:space:]@]+@sha256:[a-f0-9]{64}$ ]]; then
+                      echo '::error::APP_IMAGE must contain the digest from this build' >&2
                       exit 1
                   fi
                   printf '%s\n' "$APP_IMAGE" > /tmp/app-image.txt
 
             - name: Sync compose files and image ref
               run: |
+                  # 旧部署缺少挂载源时，Docker 可能把 Caddyfile 创建成空目录。
+                  # rmdir 只修复空目录；非空目录会报错并停止部署，避免覆盖未知文件。
                   ssh -i ~/.ssh/deploy_key \
                     -p "${SERVER_PORT:-22}" \
                     -o BatchMode=yes \
                     -o IdentitiesOnly=yes \
                     -o StrictHostKeyChecking=yes \
-                    "$SERVER_USER@$SERVER_HOST" "mkdir -p '$SERVER_PROJECT_DIR/docker'"
+                    "$SERVER_USER@$SERVER_HOST" \
+                    "mkdir -p '$SERVER_PROJECT_DIR/docker/caddy' && \
+                     if [ -d '$SERVER_PROJECT_DIR/docker/caddy/Caddyfile' ]; then \
+                         rmdir '$SERVER_PROJECT_DIR/docker/caddy/Caddyfile'; \
+                     fi"
 
                   scp -i ~/.ssh/deploy_key \
                     -P "${SERVER_PORT:-22}" \
@@ -93,8 +104,15 @@ jobs:
                     -o StrictHostKeyChecking=yes \
                     docker/docker-compose.yml \
                     docker/docker-compose.deploy.yml \
-                    docker/caddy/Caddyfile \
                     "$SERVER_USER@$SERVER_HOST:$SERVER_PROJECT_DIR/docker/"
+
+                  scp -i ~/.ssh/deploy_key \
+                    -P "${SERVER_PORT:-22}" \
+                    -o BatchMode=yes \
+                    -o IdentitiesOnly=yes \
+                    -o StrictHostKeyChecking=yes \
+                    docker/caddy/Caddyfile \
+                    "$SERVER_USER@$SERVER_HOST:$SERVER_PROJECT_DIR/docker/caddy/Caddyfile"
 
                   scp -i ~/.ssh/deploy_key \
                     -P "${SERVER_PORT:-22}" \
@@ -143,6 +161,10 @@ jobs:
                   echo '==> Pull image' \
                       \$APP_IMAGE
                   \$COMPOSE pull miaomiao-aiflow-workflow
+                  EXPECTED_IMAGE_ID="\$(docker image inspect --format '{{.Id}}' "\$APP_IMAGE")"
+                  echo "==> Expected image ID: \$EXPECTED_IMAGE_ID"
+                  # digest 拉取不会创建 sha 标签；补上本地标签，供保留最近两版镜像的清理逻辑使用。
+                  docker tag "\$APP_IMAGE" "\${APP_IMAGE%@*}:sha-${{ github.sha }}"
 
                   echo '==> Run database migrations'
                   \$COMPOSE run --rm miaomiao-aiflow-workflow \
@@ -167,14 +189,16 @@ jobs:
                       --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Label "com.docker.compose.project"}}' || true
 
                   echo '==> Start / update services (force-recreate: pick up newly pulled image)'
-                  # 关键：仅 docker compose up -d 在镜像 tag 未变化时（同一 commit 重跑 / latest 固定 tag）不会重建容器，
-                  # 即使已经 pull 到新 digest 也会继续跑旧容器；--force-recreate 强制用新镜像重建应用容器。
-                  \$COMPOSE up -d --force-recreate miaomiao-aiflow-workflow
+                  # 同步更新应用和对外入口，确保 Caddy 使用本次同步的配置。
+                  # --no-deps 避免强制重建 Postgres / Qdrant；迁移步骤已启动这些依赖。
+                  \$COMPOSE up -d --no-deps --force-recreate miaomiao-aiflow-workflow miaomiao-aiflow-caddy
 
                   echo '==> Verify running container image'
                   RUNNING_IMAGE="\$(docker inspect --format '{{.Config.Image}}' miaomiao-aiflow-workflow)"
+                  RUNNING_IMAGE_ID="\$(docker inspect --format '{{.Image}}' miaomiao-aiflow-workflow)"
                   echo "==> Running container image: \$RUNNING_IMAGE"
-                  if [ "\$RUNNING_IMAGE" != "\$APP_IMAGE" ]; then
+                  echo "==> Running container image ID: \$RUNNING_IMAGE_ID"
+                  if [ "\$RUNNING_IMAGE" != "\$APP_IMAGE" ] || [ "\$RUNNING_IMAGE_ID" != "\$EXPECTED_IMAGE_ID" ]; then
                       echo '==> Error: running container did not switch to the new image' >&2
                       exit 1
                   fi
@@ -200,9 +224,9 @@ jobs:
                   echo '==> Prune old app images (keep the two newest)'
                   # 镜像 tag 为 sha-<git sha>；按创建时间倒序只保留最近两个，更早的删除，
                   # 避免每次 CD 都 pull 新镜像导致服务器磁盘上镜像越积越多。
-                  APP_REPO="\${APP_IMAGE%%:*}"
-                  NEWEST_TWO="\$(docker image ls --format '{{.CreatedAt}}\t{{.Repository}}:{{.Tag}}' "\$APP_REPO" | grep -F ':sha-' | sort -r | head -n 2 | awk -F '\t' '{print \$2}')"
-                  for img in \$(docker image ls --format '{{.Repository}}:{{.Tag}}' "\$APP_REPO" | grep -F ':sha-'); do
+                  APP_REPO="\${APP_IMAGE%@*}"
+                  NEWEST_TWO="\$(docker image ls --format '{{.CreatedAt}}\t{{.Repository}}:{{.Tag}}' "\$APP_REPO" | sort -r | awk -F '\t' '\$2 ~ /:sha-/ && ++n <= 2 {print \$2}')"
+                  for img in \$(docker image ls --format '{{.Repository}}:{{.Tag}}' "\$APP_REPO" | awk '/:sha-/'); do
                       if ! printf '%s\n' "\$NEWEST_TWO" | grep -Fx "\$img" >/dev/null; then
                           echo "==> Removing old image: \$img"
                           docker rmi "\$img" >/dev/null || true
