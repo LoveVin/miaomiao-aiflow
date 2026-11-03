@@ -171,8 +171,11 @@ jobs:
                   docker tag "\$APP_IMAGE" "\${APP_IMAGE%@*}:sha-${{ github.sha }}"
 
                   echo '==> Run database migrations'
+                  # </dev/null 很关键：compose run 默认附加 stdin，会把 heredoc
+                  # 喂给 bash -s 的剩余脚本当 stdin 读走丢弃，导致迁移之后的
+                  # up -d 等步骤全部不执行且不报错。
                   \$COMPOSE run --rm miaomiao-aiflow-workflow \
-                      node_modules/.bin/prisma migrate deploy --config prisma7.config.ts
+                      node_modules/.bin/prisma migrate deploy --config prisma7.config.ts </dev/null
 
                   echo '==> Check for stale app container not owned by this compose project'
                   # 历史遗留：早期部署可能用其它 compose 项目名/方式创建了同名容器。
