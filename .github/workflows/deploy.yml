@@ -33,6 +33,7 @@ jobs:
               uses: docker/build-push-action@v6
               with:
                   context: .
+                  file: docker/Dockerfile
                   push: true
                   # NEXT_PUBLIC_* 只能构建期内联，从 Secrets 注入（缺少时为空，
                   # SDK 会上报到空地址导致监控收不到数据）

@@ -1,7 +1,8 @@
 # syntax=docker/dockerfile:1
 
 # 喵喵 AIFlow Workflow 应用生产镜像
-# 构建：docker build -t <registry>/<namespace>/miaomiao-aiflow-workflow:<tag> .
+# 构建（必须在仓库根目录执行，构建上下文为仓库根目录）：
+# docker build -f docker/Dockerfile -t <registry>/<namespace>/miaomiao-aiflow-workflow:<tag> .
 # 只构建并部署 apps/workflow（Next.js 应用），Postgres / Qdrant 由服务器 compose 提供。
 
 FROM node:22-alpine AS base
